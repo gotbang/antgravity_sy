@@ -1,0 +1,287 @@
+/* AntGravity Design Tokens - 레퍼런스 기반 진한 색상 */
+
+@import url('https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
+
+:root {
+  /* ===== Core Colors (레퍼런스 기반 - 진한 색상) ===== */
+  --background: 245 240 230;
+  --foreground: 93 64 55;
+
+  /* ===== Card ===== */
+  --card: 255 255 255;
+  --card-foreground: 93 64 55;
+
+  /* ===== Popover ===== */
+  --popover: 255 255 255;
+  --popover-foreground: 93 64 55;
+
+  /* ===== Primary (황금색 강조) ===== */
+  --primary: 230 184 115;
+  --primary-foreground: 255 255 255;
+
+  /* ===== Secondary (보조) ===== */
+  --secondary: 141 110 99;
+  --secondary-foreground: 255 255 255;
+
+  /* ===== Muted (회색조) ===== */
+  --muted: 245 240 230;
+  --muted-foreground: 141 110 99;
+
+  /* ===== Accent (강조) ===== */
+  --accent: 230 184 115;
+  --accent-foreground: 255 255 255;
+
+  /* ===== Success (녹색 긍정) ===== */
+  --success: 76 175 80;
+  --success-foreground: 255 255 255;
+
+  /* ===== Destructive (빨간 부정) ===== */
+  --destructive: 255 82 82;
+  --destructive-foreground: 255 255 255;
+
+  /* ===== Border & Input (진한 테두리) ===== */
+  --border: 141 110 99;
+  --input: 141 110 99;
+  --ring: 230 184 115;
+
+  /* ===== Radius ===== */
+  --radius: 1rem;
+
+  /* ===== Custom Tokens ===== */
+
+  /* Background Colors */
+  --bg-cream: #F5F0E6;
+  --bg-white: #FFFFFF;
+  --bg-sidebar: #5D4037;
+  --bg-hover: #5D4037;
+
+  /* Text Colors */
+  --text-primary: #5D4037;
+  --text-secondary: #8D6E63;
+  --text-auxiliary: #A1887F;
+
+  /* Functional Colors */
+  --color-primary: #E6B873;
+  --color-success: #4CAF50;
+  --color-negative: #FF5252;
+  --color-hover: #5D4037;
+
+  /* Border Colors (진하게 변경) */
+  --border-light: #8D6E63;
+  --border-dark: #5D4037;
+
+  /* Fonts */
+  --font-diary: 'Nanum Pen Script', cursive;
+  --font-sans: 'Noto Sans KR', sans-serif;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 2px 4px rgba(0,0,0,0.08);
+  --shadow-lg: 0 4px 8px rgba(0,0,0,0.1);
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-button: 0 1px 2px rgba(0,0,0,0.05);
+
+  /* Animation */
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  --easing-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --easing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark {
+  --background: 93 64 55;
+  --foreground: 245 240 230;
+
+  --card: 121 90 75;
+  --card-foreground: 245 240 230;
+
+  --popover: 121 90 75;
+  --popover-foreground: 245 240 230;
+
+  --primary: 230 184 115;
+  --primary-foreground: 93 64 55;
+
+  --secondary: 141 110 99;
+  --secondary-foreground: 245 240 230;
+
+  --muted: 121 90 75;
+  --muted-foreground: 141 110 99;
+
+  --accent: 230 184 115;
+  --accent-foreground: 93 64 55;
+
+  --success: 76 175 80;
+  --success-foreground: 255 255 255;
+
+  --destructive: 255 82 82;
+  --destructive-foreground: 255 255 255;
+
+  --border: 121 90 75;
+  --input: 121 90 75;
+  --ring: 230 184 115;
+}
+
+/* ===== Utility Classes ===== */
+
+.font-diary {
+  font-family: var(--font-diary);
+}
+
+.bg-cream {
+  background-color: var(--bg-cream);
+}
+
+.text-primary-color {
+  color: var(--text-primary);
+}
+
+.text-secondary-color {
+  color: var(--text-secondary);
+}
+
+.text-auxiliary {
+  color: var(--text-auxiliary);
+}
+
+.shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+.shadow-button {
+  box-shadow: var(--shadow-button);
+}
+
+/* ===== Animations ===== */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.02); }
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}
+
+.animate-fade-slide-up {
+  animation: fadeSlideUp var(--duration-normal) var(--easing-smooth) forwards;
+}
+
+/* ===== Component Tokens ===== */
+
+.character-card {
+  background: rgb(var(--card));
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-light);
+}
+
+.mode-card {
+  transition: all var(--duration-normal) var(--easing-bounce);
+}
+
+.mode-card:active {
+  transform: scale(0.96);
+}
+
+.speech-bubble {
+  position: relative;
+  background: rgb(var(--card));
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-light);
+}
+
+.speech-bubble::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 20px;
+  width: 16px;
+  height: 16px;
+  background: rgb(var(--card));
+  border-left: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  transform: rotate(45deg);
+}
+
+/* ===== Button Styles ===== */
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: #FFFFFF;
+  border-radius: 9999px;
+  padding: 12px 24px;
+  font-weight: 700;
+  box-shadow: var(--shadow-button);
+  transition: all var(--duration-fast) var(--easing-smooth);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-hover);
+}
+
+.btn-primary:active {
+  transform: scale(0.96);
+}
+
+.btn-secondary {
+  background-color: #FFFFFF;
+  color: var(--color-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 9999px;
+  padding: 10px 22px;
+  font-weight: 700;
+  transition: all var(--duration-fast) var(--easing-smooth);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-cream);
+}
+
+.btn-secondary:active {
+  transform: scale(0.96);
+}
+
+/* ===== State Utilities ===== */
+
+.text-success {
+  color: var(--color-success);
+}
+
+.text-negative {
+  color: var(--color-negative);
+}
+
+.bg-success {
+  background-color: var(--color-success);
+}
+
+.bg-negative {
+  background-color: var(--color-negative);
+}
+
+.is-loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.is-empty {
+  color: var(--text-secondary);
+  font-style: italic;
+}
