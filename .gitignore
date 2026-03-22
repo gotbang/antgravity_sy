@@ -22,3 +22,5 @@ Thumbs.db
 .claude/
 .playwright-mcp/
 src/config/public-env.generated.js
+docs/개발일지/
+docs/prompt/
