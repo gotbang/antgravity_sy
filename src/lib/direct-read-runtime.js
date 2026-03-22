@@ -59,6 +59,49 @@ function resolveActivityLevelText(level) {
   return "주의";
 }
 
+function deriveActivityFallback(detail) {
+  const changeRaw = detail.change_pct ?? detail.changePct;
+  if (changeRaw === null || changeRaw === undefined) {
+    return {
+      safe_activity_radius_pct: null,
+      safe_activity_level: null,
+      safe_activity_label: "활동 반경을 계산할 시세가 아직 없어."
+    };
+  }
+
+  const changePct = Math.abs(Number(changeRaw));
+  let radius = 5.0;
+  if (changePct >= 7) {
+    radius = 2.0;
+  } else if (changePct >= 4) {
+    radius = 3.0;
+  } else if (changePct >= 2) {
+    radius = 4.0;
+  } else {
+    radius = 5.2;
+  }
+
+  if (radius >= 4.5) {
+    return {
+      safe_activity_radius_pct: radius,
+      safe_activity_level: "safe",
+      safe_activity_label: "현재 변동성 기준으로는 비교적 넓게 움직일 수 있어."
+    };
+  }
+  if (radius >= 3.0) {
+    return {
+      safe_activity_radius_pct: radius,
+      safe_activity_level: "caution",
+      safe_activity_label: "현재 변동성이 있어서 반경을 조금 줄여 보는 게 좋아."
+    };
+  }
+  return {
+    safe_activity_radius_pct: radius,
+    safe_activity_level: "danger",
+    safe_activity_label: "변동성이 커서 활동 반경을 아주 좁게 잡는 게 좋아."
+  };
+}
+
 function applyActivityBadgeState(element, level) {
   if (!element) {
     return;
@@ -146,30 +189,44 @@ export async function loadStockCard({
   );
 
   const changeElement = documentRef.getElementById(`stock-card-${index}-change`);
-  const changePct = Number(detail.change_pct ?? detail.changePct ?? 0);
+  const rawChangePct = detail.change_pct ?? detail.changePct;
   if (changeElement) {
     changeElement.classList.remove("text-[#6AA84F]", "text-[#A45B3E]", "text-[#8E715C]");
-    if (detail.price_status === "missing" && detail.change_pct == null && detail.changePct == null) {
+    if (rawChangePct == null) {
       applyText(changeElement, "변동 미확인");
       changeElement.classList.add("text-[#8E715C]");
     } else {
+      const changePct = Number(rawChangePct);
       applyText(changeElement, formatSignedPercent(changePct));
       changeElement.classList.add(changePct >= 0 ? "text-[#6AA84F]" : "text-[#A45B3E]");
     }
   }
 
-  const radiusValue = Number(detail.safe_activity_radius_pct ?? 5);
-  applyText(documentRef.getElementById(`stock-card-${index}-radius-value`), `±${radiusValue.toFixed(1)}%`);
+  const resolvedActivity = detail.safe_activity_radius_pct == null
+    ? deriveActivityFallback(detail)
+    : {
+        safe_activity_radius_pct: Number(detail.safe_activity_radius_pct),
+        safe_activity_level: detail.safe_activity_level,
+        safe_activity_label: detail.safe_activity_label,
+      };
+  const radiusValue = resolvedActivity.safe_activity_radius_pct;
+  applyText(
+    documentRef.getElementById(`stock-card-${index}-radius-value`),
+    radiusValue == null ? "계산중" : `±${radiusValue.toFixed(1)}%`
+  );
   const radiusBadge = documentRef.getElementById(`stock-card-${index}-radius-badge`);
-  applyText(radiusBadge, resolveActivityLevelText(detail.safe_activity_level));
-  applyActivityBadgeState(radiusBadge, detail.safe_activity_level);
+  applyText(
+    radiusBadge,
+    resolvedActivity.safe_activity_level ? resolveActivityLevelText(resolvedActivity.safe_activity_level) : "확인중"
+  );
+  applyActivityBadgeState(radiusBadge, resolvedActivity.safe_activity_level);
   applyText(
     documentRef.getElementById(`stock-card-${index}-radius-caption`),
-    detail.safe_activity_label ?? "반경 계산 데이터가 아직 없어."
+    resolvedActivity.safe_activity_label ?? "반경 계산 데이터가 아직 없어."
   );
   applyPercentBar(
     documentRef.getElementById(`stock-card-${index}-radius-bar`),
-    (radiusValue / 6) * 100
+    radiusValue == null ? 0 : (radiusValue / 6) * 100
   );
 
   return detail;
