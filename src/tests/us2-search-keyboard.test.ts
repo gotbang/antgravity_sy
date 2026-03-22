@@ -37,6 +37,11 @@ describe("US2 search keyboard and selection", () => {
       summary: null,
       price_status: "live",
       price_source: "snapshot",
+      coverage_tier: "hot",
+      freshness_status: "fresh",
+      last_succeeded_at: null,
+      last_attempted_at: null,
+      stale_age_hours: null,
       safe_activity_radius_pct: 4.1,
       safe_activity_level: "caution",
       safe_activity_label: "반경이 줄었어."

@@ -6,6 +6,9 @@ from typing import Any
 import dartlab
 import httpx
 from pykrx import stock
+import yfinance as yf
+
+from core.config import settings
 
 KR_FALLBACK_SYMBOLS = ("000660.KS", "005930.KS")
 
@@ -63,6 +66,160 @@ def collect_kr_market_snapshot(target_date: str | None = None) -> list[dict[str,
             }
         )
     return rows
+
+
+def resolve_kr_price_provider() -> str:
+    return "krx_official" if settings.KRX_AUTH_KEY.strip() else "yfinance_fallback"
+
+
+def _normalize_number(value: Any) -> float | None:
+    if value in (None, "", "-"):
+        return None
+    normalized = str(value).replace(",", "").strip()
+    if not normalized:
+        return None
+    try:
+        return float(normalized)
+    except ValueError:
+        return None
+
+
+def _extract_series(data: Any, symbol: str, column: str):
+    if data is None:
+        return None
+    try:
+        return data[(column, symbol)].dropna()
+    except Exception:
+        pass
+    try:
+        return data[column].dropna()
+    except Exception:
+        return None
+
+
+def _collect_kr_yfinance_snapshot(symbols: list[str], target_date: str | None = None) -> list[dict[str, Any]]:
+    if not symbols:
+        return []
+
+    results: list[dict[str, Any]] = []
+    try:
+        data = yf.download(symbols, period="2d", interval="1d", auto_adjust=True, progress=False, threads=True)
+    except Exception:
+        data = None
+
+    for symbol in symbols:
+        try:
+            if data is None:
+                raise RuntimeError("yfinance unavailable")
+            close = _extract_series(data, symbol, "Close")
+            volume = _extract_series(data, symbol, "Volume")
+            if close is None or close.empty:
+                raise RuntimeError("empty close")
+            change_pct = None
+            if len(close) >= 2 and float(close.iloc[-2]) > 0:
+                change_pct = round((float(close.iloc[-1]) - float(close.iloc[-2])) / float(close.iloc[-2]) * 100, 2)
+            results.append(
+                {
+                    "symbol": symbol,
+                    "market": "KR",
+                    "snapshot_date": close.index[-1].date().isoformat(),
+                    "close": float(close.iloc[-1]),
+                    "change_pct": change_pct,
+                    "market_cap": None,
+                    "volume": None if volume is None or volume.empty else int(volume.iloc[-1]),
+                    "per": None,
+                    "pbr": None,
+                    "payload": {
+                        "price_source": "yfinance_fallback",
+                    },
+                }
+            )
+        except Exception:
+            continue
+    return results
+
+
+def _extract_krx_payload_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    rows = payload.get("OutBlock_1")
+    if isinstance(rows, list):
+        return rows
+    rows = payload.get("output")
+    if isinstance(rows, list):
+        return rows
+    return []
+
+
+def _collect_krx_snapshot(symbols: list[str], target_date: str | None = None) -> list[dict[str, Any]]:
+    if not symbols or not settings.KRX_AUTH_KEY.strip():
+        return []
+
+    date_str = _resolve_kr_business_day(target_date)
+    if not date_str:
+        date_str = datetime.now().strftime("%Y%m%d")
+
+    symbol_set = set(symbols)
+    endpoint_by_market = {
+        "KOSPI": settings.KRX_KOSPI_DAILY_API_URL,
+        "KOSDAQ": settings.KRX_KOSDAQ_DAILY_API_URL,
+    }
+    if settings.KRX_KONEX_DAILY_API_URL:
+        endpoint_by_market["KONEX"] = settings.KRX_KONEX_DAILY_API_URL
+
+    rows: list[dict[str, Any]] = []
+    headers = {
+        "AUTH_KEY": settings.KRX_AUTH_KEY.strip(),
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    for market_name, url in endpoint_by_market.items():
+        if not url:
+            continue
+        response = httpx.post(
+            url,
+            headers=headers,
+            json={"basDd": date_str},
+            timeout=settings.KRX_REQUEST_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        for item in _extract_krx_payload_rows(payload):
+            code = str(item.get("ISU_CD") or "").strip()
+            if not code:
+                continue
+            symbol = f"{code}.KS"
+            if symbol not in symbol_set:
+                continue
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "market": "KR",
+                    "snapshot_date": f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}",
+                    "close": _normalize_number(item.get("TDD_CLSPRC")),
+                    "change_pct": _normalize_number(item.get("FLUC_RT")),
+                    "market_cap": _normalize_number(item.get("MKTCAP")),
+                    "volume": int(_normalize_number(item.get("ACC_TRDVOL")) or 0) or None,
+                    "per": _normalize_number(item.get("PER")),
+                    "pbr": _normalize_number(item.get("PBR")),
+                    "payload": {
+                        "price_source": "krx_official",
+                        "market_segment": market_name,
+                    },
+                }
+            )
+    return rows
+
+
+def collect_kr_snapshot(symbols: list[str], target_date: str | None = None) -> list[dict[str, Any]]:
+    provider = resolve_kr_price_provider()
+    if provider == "krx_official":
+        try:
+            rows = _collect_krx_snapshot(symbols, target_date=target_date)
+        except Exception:
+            rows = []
+        if rows:
+            return rows
+    return _collect_kr_yfinance_snapshot(symbols, target_date=target_date)
 
 
 def _fetch_yahoo_chart_snapshot(symbol: str) -> dict[str, Any] | None:

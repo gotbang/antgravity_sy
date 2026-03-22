@@ -33,6 +33,11 @@ describe("US1 default cards direct-read", () => {
         summary: null,
         price_status: "live",
         price_source: "snapshot",
+        coverage_tier: "hot",
+        freshness_status: "fresh",
+        last_succeeded_at: null,
+        last_attempted_at: null,
+        stale_age_hours: null,
         safe_activity_radius_pct: 4.4,
         safe_activity_level: "caution",
         safe_activity_label: "반경이 줄었어."
@@ -67,6 +72,11 @@ describe("US1 default cards direct-read", () => {
         summary: null,
         price_status: "missing",
         price_source: "unavailable",
+        coverage_tier: "cold",
+        freshness_status: "missing",
+        last_succeeded_at: null,
+        last_attempted_at: null,
+        stale_age_hours: null,
         safe_activity_radius_pct: 3.0,
         safe_activity_level: "danger",
         safe_activity_label: "반경이 아주 좁아."

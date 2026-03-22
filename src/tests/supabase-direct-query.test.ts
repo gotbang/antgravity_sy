@@ -63,6 +63,38 @@ function createSearchClient(rows: unknown[]) {
   };
 }
 
+function createFallbackSearchClient(rows: unknown[]) {
+  const operations: Array<[string, unknown]> = [];
+  let selectCount = 0;
+  const builder = {
+    select(value: string) {
+      operations.push(["select", value]);
+      selectCount += 1;
+      return this;
+    },
+    ilike(column: string, pattern: string) {
+      operations.push(["ilike", `${column}:${pattern}`]);
+      return this;
+    },
+    async limit(value: number) {
+      operations.push(["limit", value]);
+      if (selectCount === 1) {
+        return { data: null, error: new Error("column price_status does not exist") };
+      }
+      return { data: rows, error: null };
+    }
+  };
+
+  return {
+    operations,
+    from(table: string) {
+      operations.push(["from", table]);
+      expect(table).toBe("v_stock_search");
+      return builder;
+    }
+  };
+}
+
 describe("supabase direct queries", () => {
   it("reads the home summary from the public summary view", async () => {
     const client = createSingleClient("v_home_summary", {
@@ -123,10 +155,21 @@ describe("supabase direct queries", () => {
 
     expect(client.operations).toEqual([
       ["from", "v_stock_search"],
-      ["select", "symbol,name,market,sector,industry,search_text,price_status,price_source"],
+      ["select", "symbol,name,market,sector,industry,search_text,price_status,price_source,coverage_tier,freshness_status,last_succeeded_at,last_snapshot_at"],
       ["ilike", "search_text:%삼성%"],
       ["limit", 8]
     ]);
     expect(result).toHaveLength(2);
+  });
+
+  it("falls back to the legacy search projection when availability columns are missing", async () => {
+    const client = createFallbackSearchClient([
+      { symbol: "AAPL", name: "Apple Inc.", market: "US", search_text: "aapl apple inc." }
+    ]);
+
+    const result = await searchStocksDirect("AAPL", client as never);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.symbol).toBe("AAPL");
   });
 });

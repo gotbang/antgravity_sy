@@ -31,6 +31,11 @@ export function adaptHomeSummaryRow(row) {
 }
 
 export function adaptStockDetailRow(row) {
+  const inferredPriceStatus = row.price_status
+    ?? (row.price !== null && row.price !== undefined ? "live" : "missing");
+  const inferredPriceSource = row.price_source
+    ?? (row.price !== null && row.price !== undefined ? "snapshot" : "unavailable");
+  const radiusValue = row.safe_activity_radius_pct;
   return {
     symbol: row.symbol,
     name: row.name ?? row.symbol,
@@ -43,15 +48,24 @@ export function adaptStockDetailRow(row) {
     pbr: row.pbr ?? null,
     snapshot_date: row.snapshot_date ?? null,
     summary: row.summary ?? null,
-    price_status: row.price_status ?? "missing",
-    price_source: row.price_source ?? "unavailable",
-    safe_activity_radius_pct: Number(row.safe_activity_radius_pct ?? 5),
-    safe_activity_level: row.safe_activity_level ?? "caution",
-    safe_activity_label: row.safe_activity_label ?? "반경 계산 데이터가 아직 없어."
+    price_status: inferredPriceStatus,
+    price_source: inferredPriceSource,
+    coverage_tier: row.coverage_tier ?? "cold",
+    freshness_status: row.freshness_status ?? (row.price !== null && row.price !== undefined ? "fresh" : "missing"),
+    last_succeeded_at: row.last_succeeded_at ?? null,
+    last_attempted_at: row.last_attempted_at ?? null,
+    stale_age_hours: row.stale_age_hours ?? null,
+    safe_activity_radius_pct: radiusValue === null || radiusValue === undefined ? null : Number(radiusValue),
+    safe_activity_level: row.safe_activity_level ?? null,
+    safe_activity_label: row.safe_activity_label ?? null
   };
 }
 
 export function adaptSearchRow(row) {
+  const inferredPriceStatus = row.price_status
+    ?? (row.price !== null && row.price !== undefined ? "live" : "missing");
+  const inferredPriceSource = row.price_source
+    ?? (row.price !== null && row.price !== undefined ? "snapshot" : "unavailable");
   return {
     symbol: row.symbol,
     name: row.name ?? row.symbol,
@@ -59,8 +73,12 @@ export function adaptSearchRow(row) {
     sector: row.sector ?? null,
     industry: row.industry ?? null,
     search_text: row.search_text ?? "",
-    price_status: row.price_status ?? "missing",
-    price_source: row.price_source ?? "unavailable"
+    price_status: inferredPriceStatus,
+    price_source: inferredPriceSource,
+    coverage_tier: row.coverage_tier ?? "cold",
+    freshness_status: row.freshness_status ?? (row.price !== null && row.price !== undefined ? "fresh" : "missing"),
+    last_succeeded_at: row.last_succeeded_at ?? null,
+    last_snapshot_at: row.last_snapshot_at ?? null,
   };
 }
 
@@ -83,6 +101,28 @@ export function sortSearchRows(rows, query) {
     const rightScore = scoreSearchRow(right, query);
     if (leftScore !== rightScore) {
       return leftScore - rightScore;
+    }
+
+    const freshnessRank = (item) => {
+      if (item.freshness_status === "fresh") return 0;
+      if (item.freshness_status === "stale") return 1;
+      return 2;
+    };
+    const leftFreshness = freshnessRank(left);
+    const rightFreshness = freshnessRank(right);
+    if (leftFreshness !== rightFreshness) {
+      return leftFreshness - rightFreshness;
+    }
+
+    const availabilityRank = (item) => {
+      if (item.price_status === "live") return 0;
+      if (item.price_status === "fallback") return 1;
+      return 2;
+    };
+    const leftAvailability = availabilityRank(left);
+    const rightAvailability = availabilityRank(right);
+    if (leftAvailability !== rightAvailability) {
+      return leftAvailability - rightAvailability;
     }
 
     const marketCompare = String(left.market ?? "").localeCompare(String(right.market ?? ""));

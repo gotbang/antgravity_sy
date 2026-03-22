@@ -21,17 +21,25 @@ export async function searchStocksDirect(query, client = getBrowserSupabase()) {
     return [];
   }
 
-  const { data, error } = await client
-    .from("v_stock_search")
-    .select("symbol,name,market,sector,industry,search_text,price_status,price_source")
-    .ilike("search_text", `%${safeQuery}%`)
-    .limit(8);
+  const runSelect = (projection) =>
+    client
+      .from("v_stock_search")
+      .select(projection)
+      .ilike("search_text", `%${safeQuery}%`)
+      .limit(8);
 
-  if (error) {
-    throw error;
+  let response = await runSelect("symbol,name,market,sector,industry,search_text,price_status,price_source,coverage_tier,freshness_status,last_succeeded_at,last_snapshot_at");
+  if (response.error) {
+    response = await runSelect("symbol,name,market,sector,industry,search_text");
   }
 
-  return sortSearchRows((data ?? []).map(adaptSearchRow), safeQuery);
+  if (response.error) {
+    throw response.error;
+  }
+
+  const sorted = sortSearchRows((response.data ?? []).map(adaptSearchRow), safeQuery);
+  const available = sorted.filter((item) => item.price_status !== "missing");
+  return (available.length ? available : sorted).slice(0, 8);
 }
 
 export async function fetchStockDetailDirect(symbol, client = getBrowserSupabase()) {

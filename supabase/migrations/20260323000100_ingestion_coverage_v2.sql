@@ -1,27 +1,84 @@
-alter table if exists public.ticker_universe enable row level security;
-alter table if exists public.market_snapshot_daily enable row level security;
-alter table if exists public.fundamentals_cache enable row level security;
-alter table if exists public.market_summary_cache enable row level security;
-revoke all on table public.ticker_universe from anon, authenticated;
-revoke all on table public.market_snapshot_daily from anon, authenticated;
-revoke all on table public.fundamentals_cache from anon, authenticated;
-revoke all on table public.market_summary_cache from anon, authenticated;
-create or replace view public.v_home_summary as
-select
-  fetched_at as updated_at,
-  coalesce(payload->>'marketMood', '중립') as market_mood,
-  coalesce((payload->>'fearGreedIndex')::integer, 50) as fear_greed_index,
-  coalesce((payload->>'advancers')::integer, 0) as advancers,
-  coalesce((payload->>'decliners')::integer, 0) as decliners,
-  coalesce((payload->'sentimentMix'->>'positive')::numeric, 0) as positive_ratio,
-  coalesce((payload->'sentimentMix'->>'negative')::numeric, 0) as negative_ratio,
-  coalesce(payload->>'aiSummary', '시장 요약 데이터가 아직 없어.') as ai_summary
-from public.market_summary_cache
-where cache_key = 'home';
+alter table public.ticker_universe
+  add column if not exists coverage_tier text not null default 'cold',
+  add column if not exists coverage_rank integer,
+  add column if not exists refresh_bucket integer,
+  add column if not exists is_exact_refresh_enabled boolean not null default true,
+  add column if not exists primary_provider text;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'ticker_universe_coverage_tier_check'
+  ) then
+    alter table public.ticker_universe
+      add constraint ticker_universe_coverage_tier_check
+      check (coverage_tier in ('hot', 'warm', 'cold'));
+  end if;
+end
+$$;
+
+create table if not exists public.symbol_ingestion_state (
+  symbol text not null,
+  market text not null,
+  coverage_tier text not null check (coverage_tier in ('hot', 'warm', 'cold')),
+  refresh_bucket integer,
+  freshness_status text not null default 'missing' check (freshness_status in ('fresh', 'stale', 'missing')),
+  last_attempted_at timestamptz,
+  last_succeeded_at timestamptz,
+  last_snapshot_at timestamptz,
+  last_price numeric,
+  last_price_source text,
+  last_error_code text,
+  last_error_message text,
+  consecutive_failures integer not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (symbol, market)
+);
+
+create table if not exists public.symbol_ingestion_failure_log (
+  id bigint generated always as identity primary key,
+  run_id text not null,
+  symbol text not null,
+  market text not null,
+  phase text not null,
+  provider text,
+  result text not null check (result in ('success', 'failure', 'skipped')),
+  error_code text,
+  error_message text,
+  attempted_at timestamptz not null default now()
+);
+
+create table if not exists public.symbol_refresh_requests (
+  symbol text primary key,
+  market text,
+  requested_by text not null default 'ops',
+  priority integer not null default 100,
+  status text not null default 'queued' check (status in ('queued', 'running', 'done', 'failed')),
+  requested_at timestamptz not null default now(),
+  started_at timestamptz,
+  completed_at timestamptz,
+  last_error_code text
+);
+
+create index if not exists idx_ticker_universe_market_coverage_rank
+  on public.ticker_universe (market, coverage_tier, coverage_rank);
+
+create index if not exists idx_symbol_ingestion_state_tier_bucket
+  on public.symbol_ingestion_state (market, coverage_tier, refresh_bucket);
+
+create index if not exists idx_symbol_refresh_requests_status_priority
+  on public.symbol_refresh_requests (status, priority, requested_at);
+
+drop view if exists public.v_stock_detail_latest;
+drop view if exists public.v_stock_search;
+
 create or replace view public.v_stock_search as
 with latest_snapshot as (
   select
     symbol,
+    fetched_at,
     close,
     row_number() over (partition by symbol order by snapshot_date desc) as row_num
   from public.market_snapshot_daily
@@ -44,19 +101,35 @@ select
     when snapshot.close is not null then 'snapshot'
     when nullif(fundamentals.payload->>'price', '') is not null then 'cache_fallback'
     else 'unavailable'
-  end as price_source
+  end as price_source,
+  coalesce(universe.coverage_tier, state.coverage_tier, 'cold') as coverage_tier,
+  coalesce(
+    state.freshness_status,
+    case
+      when coalesce(snapshot.close, nullif(fundamentals.payload->>'price', '')::numeric) is null then 'missing'
+      when snapshot.fetched_at is not null and snapshot.fetched_at >= now() - interval '20 hours' then 'fresh'
+      else 'stale'
+    end
+  ) as freshness_status,
+  state.last_succeeded_at as last_succeeded_at,
+  state.last_snapshot_at as last_snapshot_at
 from public.ticker_universe as universe
 left join latest_snapshot as snapshot
   on snapshot.symbol = universe.symbol
  and snapshot.row_num = 1
 left join public.fundamentals_cache as fundamentals
-  on fundamentals.symbol = universe.symbol;
+  on fundamentals.symbol = universe.symbol
+left join public.symbol_ingestion_state as state
+  on state.symbol = universe.symbol
+ and state.market = universe.market;
+
 create or replace view public.v_stock_detail_latest as
 with latest_snapshot as (
   select
     symbol,
     market,
     snapshot_date,
+    fetched_at,
     close,
     change_pct,
     market_cap,
@@ -159,14 +232,29 @@ select
   coalesce(
     fundamentals.payload->>'safe_activity_label',
     '반경 계산 데이터가 아직 없어. 기본 경계로 탐색해줘.'
-  ) as safe_activity_label
+  ) as safe_activity_label,
+  coalesce(universe.coverage_tier, state.coverage_tier, 'cold') as coverage_tier,
+  coalesce(
+    state.freshness_status,
+    case
+      when coalesce(snapshot.close, nullif(fundamentals.payload->>'price', '')::numeric) is null then 'missing'
+      when snapshot.fetched_at is not null and snapshot.fetched_at >= now() - interval '20 hours' then 'fresh'
+      else 'stale'
+    end
+  ) as freshness_status,
+  state.last_succeeded_at as last_succeeded_at,
+  state.last_attempted_at as last_attempted_at,
+  case
+    when snapshot.fetched_at is null then null
+    else round(extract(epoch from (now() - snapshot.fetched_at)) / 3600.0, 2)
+  end as stale_age_hours
 from public.ticker_universe as universe
 left join latest_snapshot as snapshot
   on snapshot.symbol = universe.symbol
  and snapshot.row_num = 1
 left join public.fundamentals_cache as fundamentals
   on fundamentals.symbol = universe.symbol
+left join public.symbol_ingestion_state as state
+  on state.symbol = universe.symbol
+ and state.market = universe.market
 left join home_summary on true;
-grant select on public.v_home_summary to anon, authenticated;
-grant select on public.v_stock_search to anon, authenticated;
-grant select on public.v_stock_detail_latest to anon, authenticated;

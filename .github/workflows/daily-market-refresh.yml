@@ -2,13 +2,13 @@
 
 on:
   schedule:
-    - cron: '0 22 * * 0-4'
+    - cron: '0,30 * * * 1-5'
   workflow_dispatch:
     inputs:
       phase:
-        description: 'fundamentals|summary|all'
+        description: 'scheduled|universe-sync|kr-hot|us-hot|warm-rotate|exact-worker|summary|all'
         required: false
-        default: 'all'
+        default: 'scheduled'
 
 env:
   APP_ENV: production
@@ -43,4 +43,4 @@ jobs:
           fi
       - name: Run daily refresh
         run: |
-          python backend/scripts/daily_refresh.py --phase ${{ github.event.inputs.phase || 'all' }}
+          python backend/scripts/daily_refresh.py --phase ${{ github.event.inputs.phase || 'scheduled' }}

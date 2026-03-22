@@ -71,6 +71,20 @@ describe("supabase direct adapters", () => {
     expect(result.price_source).toBe("cache_fallback");
   });
 
+  it("infers live price status from legacy detail rows that lack new fields", () => {
+    const result = adaptStockDetailRow({
+      symbol: "AAPL",
+      name: "Apple Inc.",
+      market: "US",
+      price: 201.12,
+      change_pct: 1.3,
+      summary: "요약",
+    });
+
+    expect(result.price_status).toBe("live");
+    expect(result.price_source).toBe("snapshot");
+  });
+
   it("treats timestamps inside the freshness window as valid", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-22T20:00:00.000Z"));
