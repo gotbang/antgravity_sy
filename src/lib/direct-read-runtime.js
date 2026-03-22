@@ -1,4 +1,8 @@
-import { fetchHomeSummaryDirect, fetchStockDetailDirect } from "./supabase-queries.js";
+import {
+  fetchHomeSummaryDirect,
+  fetchStockDetailDirect,
+  searchStocksDirect
+} from "./supabase-queries.js";
 
 function applyText(element, value) {
   if (element && value !== undefined && value !== null) {
@@ -96,4 +100,211 @@ export async function loadStockCard({
   }
 
   return detail;
+}
+
+function getSearchElements(documentRef) {
+  return {
+    input: documentRef.getElementById("stock-search-input"),
+    panel: documentRef.getElementById("stock-search-results"),
+    list: documentRef.getElementById("stock-search-results-list"),
+    status: documentRef.getElementById("stock-search-results-status")
+  };
+}
+
+function openSearchPanel(panel) {
+  panel?.classList.remove("hidden");
+}
+
+function closeSearchPanel(panel, list, status) {
+  panel?.classList.add("hidden");
+  if (list) {
+    list.innerHTML = "";
+  }
+  if (status) {
+    status.textContent = "";
+    status.classList.add("hidden");
+  }
+}
+
+function renderSearchStatus(status, message) {
+  if (!status) {
+    return;
+  }
+
+  status.textContent = message;
+  status.classList.remove("hidden");
+}
+
+function renderSearchResults({
+  items,
+  activeIndex,
+  list,
+  status,
+  onSelect
+}) {
+  if (!list) {
+    return;
+  }
+
+  list.innerHTML = "";
+  if (!items.length) {
+    renderSearchStatus(status, "검색 결과가 없어.");
+    return;
+  }
+
+  status?.classList.add("hidden");
+
+  items.forEach((item, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.symbol = item.symbol;
+    button.className = [
+      "w-full",
+      "rounded-2xl",
+      "border-[2px]",
+      "px-3",
+      "py-3",
+      "text-left",
+      "transition",
+      index === activeIndex
+        ? "border-[#5E3A23] bg-[#FFF4D8]"
+        : "border-[#D7C1A6] bg-[#FFF9F1]"
+    ].join(" ");
+    button.innerHTML = `
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="text-sm font-extrabold text-[#2F1C12]">${item.name ?? item.symbol}</p>
+          <p class="text-[11px] font-semibold text-[#8E715C]">${item.symbol}</p>
+        </div>
+        <span class="status-shell px-2 py-1 text-[10px] font-extrabold">${item.market ?? "-"}</span>
+      </div>
+    `;
+    button.addEventListener("click", async () => {
+      await onSelect(item);
+    });
+    list.appendChild(button);
+  });
+}
+
+export function createSearchController({
+  documentRef = document,
+  searchStocks = searchStocksDirect,
+  fetchStockDetail = fetchStockDetailDirect,
+  onToast = () => {},
+  debounceMs = 200
+} = {}) {
+  const { input, panel, list, status } = getSearchElements(documentRef);
+  let items = [];
+  let activeIndex = -1;
+  let debounceHandle = null;
+
+  async function selectItem(item) {
+    await loadStockCard({
+      symbol: item.symbol,
+      index: 1,
+      documentRef,
+      fetchStockDetail
+    });
+    onToast(`${item.name ?? item.symbol} 종목을 찾았어.`);
+    closeSearchPanel(panel, list, status);
+    activeIndex = -1;
+  }
+
+  async function runSearch() {
+    const query = input?.value?.trim() ?? "";
+    if (!query) {
+      items = [];
+      activeIndex = -1;
+      closeSearchPanel(panel, list, status);
+      return;
+    }
+
+    openSearchPanel(panel);
+    renderSearchStatus(status, "검색 중이야...");
+
+    try {
+      items = await searchStocks(query);
+      activeIndex = items.length ? 0 : -1;
+      renderSearchResults({ items, activeIndex, list, status, onSelect: selectItem });
+    } catch (error) {
+      console.error("stock search failed", error);
+      items = [];
+      activeIndex = -1;
+      if (list) {
+        list.innerHTML = "";
+      }
+      renderSearchStatus(status, "검색 중 문제가 생겼어. 잠시 후 다시 시도해줘.");
+    }
+  }
+
+  function scheduleSearch() {
+    if (debounceHandle) {
+      clearTimeout(debounceHandle);
+    }
+
+    debounceHandle = setTimeout(() => {
+      debounceHandle = null;
+      void runSearch();
+    }, debounceMs);
+  }
+
+  function rerender() {
+    renderSearchResults({ items, activeIndex, list, status, onSelect: selectItem });
+  }
+
+  async function handleKeydown(event) {
+    if (event.key === "ArrowDown" && items.length) {
+      event.preventDefault();
+      activeIndex = (activeIndex + 1) % items.length;
+      rerender();
+      return;
+    }
+
+    if (event.key === "ArrowUp" && items.length) {
+      event.preventDefault();
+      activeIndex = activeIndex <= 0 ? items.length - 1 : activeIndex - 1;
+      rerender();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      activeIndex = -1;
+      closeSearchPanel(panel, list, status);
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+
+      if (!items.length) {
+        await runSearch();
+        return;
+      }
+
+      const item = items[activeIndex] ?? items[0];
+      if (item) {
+        await selectItem(item);
+      }
+    }
+  }
+
+  return {
+    async searchNow() {
+      await runSearch();
+    },
+    getState() {
+      return { items, activeIndex };
+    },
+    bind() {
+      if (!input) {
+        return;
+      }
+
+      input.addEventListener("input", scheduleSearch);
+      input.addEventListener("keydown", (event) => {
+        void handleKeydown(event);
+      });
+    }
+  };
 }

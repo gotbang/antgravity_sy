@@ -28,6 +28,8 @@ select
   market,
   sector,
   industry,
+  lower(symbol) as symbol_normalized,
+  lower(coalesce(name, '')) as name_normalized,
   lower(symbol || ' ' || coalesce(name, '')) as search_text
 from public.ticker_universe;
 

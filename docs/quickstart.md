@@ -73,3 +73,19 @@
   - `SUPABASE_ANON_KEY`
 - 브라우저 Supabase 클라이언트 초기화 모듈은 `src/lib/supabase-browser.js`에 둘 준비가 되어 있다.
 - 현재 이 문단은 계획 보존용이고, 실제 실행 기준은 아니다.
+
+## 5. 컷오버/롤백 실행 메모
+
+### 컷오버 확인
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `python -m pytest backend/tests/test_public_views_contract.py backend/tests/test_cache_freshness_gate.py backend/tests/test_direct_read_quality_gate.py backend/tests/test_search_rank_contract.py backend/tests/test_legacy_read_fallback_contract.py`
+
+### rollback-only 경로
+- direct-read 전환 이후 `/api/market-summary`, `/api/stocks/search`, `/api/stocks/{symbol}`는 rollback-only 경로로 간주한다.
+- 기본 사용자 흐름은 공개 뷰 direct-read가 우선이다.
+
+### 롤백 메모
+- direct-read 품질 게이트가 깨지면 프론트 조회 helper를 legacy `/api/...` 경로로 되돌린다.
+- 롤백 후에도 공개 뷰와 배치 적재는 유지한다.

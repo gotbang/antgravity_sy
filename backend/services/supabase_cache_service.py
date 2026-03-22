@@ -5,14 +5,14 @@ from typing import Any
 
 from core.supabase_client import get_supabase
 
-_CACHE_VALID_HOURS = 25
+CACHE_VALID_HOURS = 20
 
 
-def _is_fresh(fetched_at: str | None) -> bool:
+def is_fresh(fetched_at: str | None, *, max_age_hours: int = CACHE_VALID_HOURS) -> bool:
     if not fetched_at:
         return False
     value = datetime.fromisoformat(fetched_at.replace("Z", "+00:00"))
-    return datetime.now(timezone.utc) - value < timedelta(hours=_CACHE_VALID_HOURS)
+    return datetime.now(timezone.utc) - value < timedelta(hours=max_age_hours)
 
 
 def read_json(table: str, key_field: str, key_value: str, payload_field: str = "payload") -> dict[str, Any] | None:
@@ -26,7 +26,7 @@ def read_json(table: str, key_field: str, key_value: str, payload_field: str = "
             .execute()
         )
         row = result.data
-        if row and _is_fresh(row.get("fetched_at")):
+        if row and is_fresh(row.get("fetched_at")):
             return row.get(payload_field)
     except Exception:
         return None

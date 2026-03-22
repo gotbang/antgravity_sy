@@ -106,12 +106,12 @@ Story goal:
 - 선택 후 카드 1이 직결 상세 조회로 갱신된다.
 - `/api/stocks/search`와 검색용 `/api/stocks/{symbol}` 호출이 0회다.
 
-- [ ] T018 [US2] Create failing search-result list rendering test in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\src\tests\us2-search-list.test.ts
-- [ ] T019 [P] [US2] Create failing keyboard selection interaction test in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\src\tests\us2-search-keyboard.test.ts
-- [ ] T020 [US2] Replace search source from `/api/stocks/search` to `v_stock_search` in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\index.html
-- [ ] T021 [US2] Implement search dropdown, loading, empty, and error states in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\index.html
-- [ ] T022 [US2] Implement click, Enter, ArrowUp, ArrowDown, and Escape result selection flow in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\index.html
-- [ ] T023 [US2] Replace selected-symbol detail refresh with `v_stock_detail_latest` query in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\index.html
+- [X] T018 [US2] Create failing search-result list rendering test in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\src\tests\us2-search-list.test.ts
+- [X] T019 [P] [US2] Create failing keyboard selection interaction test in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\src\tests\us2-search-keyboard.test.ts
+- [X] T020 [US2] Replace search source from `/api/stocks/search` to `v_stock_search` in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\index.html
+- [X] T021 [US2] Implement search dropdown, loading, empty, and error states in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\index.html
+- [X] T022 [US2] Implement click, Enter, ArrowUp, ArrowDown, and Escape result selection flow in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\index.html
+- [X] T023 [US2] Replace selected-symbol detail refresh with `v_stock_detail_latest` query in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\index.html
 
 ## Phase 5. User Story 3 - 공개 뷰와 적재 품질 게이트 강화
 
@@ -124,14 +124,14 @@ Story goal:
 - `AAPL`, `TSLA`, `000660.KS`가 품질 게이트를 통과한다.
 - freshness `20시간` 기준을 만족한다.
 
-- [ ] T024 [US3] Create failing cache freshness gate tests for the `20시간` 기준 in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\tests\test_cache_freshness_gate.py
-- [ ] T025 [P] [US3] Create failing representative-symbol quality gate tests for `AAPL`, `TSLA`, `000660.KS` in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\tests\test_direct_read_quality_gate.py
-- [ ] T026 [P] [US3] Create failing search ranking contract tests for `삼성`, `하이닉스`, `AAPL` in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\tests\test_search_rank_contract.py
-- [ ] T027 [US3] Prevent empty-summary overwrite during batch refresh in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\scripts\daily_refresh.py
-- [ ] T028 [US3] Align cache freshness logic with the `20시간` direct-read contract in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\services\supabase_cache_service.py
-- [ ] T029 [US3] Improve KR snapshot completeness for representative symbol coverage in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\services\kr_market_ingestion.py
-- [ ] T030 [US3] Implement search ordering contract in the public search view migration in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\supabase\migrations\20260322_public_market_views.sql
-- [ ] T031 [US3] Sync legacy read-path quality assumptions with direct-read gates in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\services\market_query_service.py
+- [X] T024 [US3] Create failing cache freshness gate tests for the `20시간` 기준 in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\tests\test_cache_freshness_gate.py
+- [X] T025 [P] [US3] Create failing representative-symbol quality gate tests for `AAPL`, `TSLA`, `000660.KS` in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\tests\test_direct_read_quality_gate.py
+- [X] T026 [P] [US3] Create failing search ranking contract tests for `삼성`, `하이닉스`, `AAPL` in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\tests\test_search_rank_contract.py
+- [X] T027 [US3] Prevent empty-summary overwrite during batch refresh in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\scripts\daily_refresh.py
+- [X] T028 [US3] Align cache freshness logic with the `20시간` direct-read contract in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\services\supabase_cache_service.py
+- [X] T029 [US3] Improve KR snapshot completeness for representative symbol coverage in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\services\kr_market_ingestion.py
+- [X] T030 [US3] Implement search ordering contract in the public search view migration in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\supabase\migrations\20260322_public_market_views.sql
+- [X] T031 [US3] Sync legacy read-path quality assumptions with direct-read gates in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\services\market_query_service.py
 
 ## Phase 6. User Story 4 - 컷오버, 레거시, 롤백 준비
 
@@ -143,26 +143,26 @@ Story goal:
 - 레거시 FastAPI 읽기 경로가 rollback-only로 문서화된다.
 - 브라우저 번들에 `SUPABASE_SERVICE_ROLE_KEY`, `DART_API_KEY`가 없다.
 
-- [ ] T032 [US4] Create failing browser network regression test for zero legacy read calls in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\src\tests\us4-cutover-network.test.ts
-- [ ] T033 [P] [US4] Create failing rollback-path verification test for legacy read helpers in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\tests\test_legacy_read_fallback_contract.py
-- [ ] T034 [US4] Remove frontend runtime dependence on legacy read helpers in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\src\lib\apiClient.ts
-- [ ] T035 [US4] Reclassify FastAPI read routes as rollback-only in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\docs\plan.md
-- [ ] T036 [US4] Sync cutover execution steps and rollback runbook in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\docs\quickstart.md
-- [ ] T037 [US4] Verify direct-read secret exposure boundaries in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\docs\운영가이드\github-secrets.md
+- [X] T032 [US4] Create failing browser network regression test for zero legacy read calls in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\src\tests\us4-cutover-network.test.ts
+- [X] T033 [P] [US4] Create failing rollback-path verification test for legacy read helpers in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\tests\test_legacy_read_fallback_contract.py
+- [X] T034 [US4] Remove frontend runtime dependence on legacy read helpers in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\src\lib\apiClient.ts
+- [X] T035 [US4] Reclassify FastAPI read routes as rollback-only in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\docs\plan.md
+- [X] T036 [US4] Sync cutover execution steps and rollback runbook in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\docs\quickstart.md
+- [X] T037 [US4] Verify direct-read secret exposure boundaries in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\docs\운영가이드\github-secrets.md
 
 ## Phase 7. Polish & Cross-Cutting
 
 목표:
 - placeholder 테스트, 문서 부채, 후속 보류 항목을 정리한다.
 
-- [ ] T038 [P] Replace placeholder daily-refresh assertions with real checks in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\tests\test_daily_refresh.py
-- [ ] T039 [P] Replace placeholder ingestion smoke assertions with real checks in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\tests\test_market_ingestion_smoke.py
-- [ ] T040 [P] Replace placeholder sensitive-data guard assertions with real checks in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\tests\test_sensitive_data_guard.py
-- [ ] T041 Update `docs/task.md` execution notes and story summary after implementation lands in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\docs\task.md
-- [ ] T042 Sync freshness references from `25시간` to `20시간` in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\docs\plan.md
-- [ ] T043 Create canonical product requirements placeholder aligned to the direct-read plan in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\docs\PRD.md
-- [ ] T044 Create implementation spec placeholder for the direct-read contract in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\spec\supabase-direct-read.md
-- [ ] T045 Sync implementation outcomes and deferred scope notes in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\docs\research.md
+- [X] T038 [P] Replace placeholder daily-refresh assertions with real checks in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\tests\test_daily_refresh.py
+- [X] T039 [P] Replace placeholder ingestion smoke assertions with real checks in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\tests\test_market_ingestion_smoke.py
+- [X] T040 [P] Replace placeholder sensitive-data guard assertions with real checks in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\backend\tests\test_sensitive_data_guard.py
+- [X] T041 Update `docs/task.md` execution notes and story summary after implementation lands in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\docs\task.md
+- [X] T042 Sync freshness references from `25시간` to `20시간` in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\docs\plan.md
+- [X] T043 Create canonical product requirements placeholder aligned to the direct-read plan in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\docs\PRD.md
+- [X] T044 Create implementation spec placeholder for the direct-read contract in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\spec\supabase-direct-read.md
+- [X] T045 Sync implementation outcomes and deferred scope notes in C:\Users\khc\Desktop\fastcampus\ant_gravity_soyeon\docs\research.md
 
 ## Dependencies
 
