@@ -614,49 +614,6 @@
                 </div>
               </div>
 
-              <div class="character-card p-4">
-                <div class="flex items-center gap-3 mb-4">
-                  <div class="w-12 h-12 rounded-full ant-orb flex items-center justify-center">
-                    <i data-lucide="nut" class="lucide-icon text-[#5E3A23]"></i>
-                  </div>
-                  <div class="flex-1">
-                    <h3 id="stock-card-2-name" class="section-title text-[18px] font-extrabold">밤나무</h3>
-                    <p id="stock-card-2-symbol" class="text-xs text-[#8E715C] font-semibold">BNUT</p>
-                  </div>
-                  <div class="text-right">
-                    <p id="stock-card-2-price" class="font-black text-[#2F1C12]">$42.30</p>
-                    <p id="stock-card-2-change" class="text-xs text-[#A45B3E] font-extrabold">-1.2%</p>
-                  </div>
-                </div>
-
-                <div class="mb-4">
-                  <div class="flex justify-between text-xs mb-2 font-semibold">
-                    <span class="text-[#6E4C39]">안전 활동 반경</span>
-                    <span class="font-extrabold text-[#5E3A23]">±8%</span>
-                  </div>
-                  <input type="range" min="1" max="20" value="8" class="w-full">
-                </div>
-
-                <div class="market-badge p-3 mb-3">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                      <i data-lucide="footprints" class="lucide-icon lucide-icon-sm text-[#6AA84F]"></i>
-                      <span class="text-xs font-extrabold text-[#6AA84F]">거인의 발자국 (상승풍)</span>
-                    </div>
-                    <span class="text-sm font-black text-[#6AA84F]">약함</span>
-                  </div>
-                </div>
-
-                <div class="market-badge p-3">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                      <i data-lucide="wind" class="lucide-icon lucide-icon-sm text-[#5E3A23]"></i>
-                      <span class="text-xs font-extrabold text-[#5E3A23]">맞바람 강도 (하락풍)</span>
-                    </div>
-                    <span class="text-sm font-black text-[#5E3A23]">중간</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -928,7 +885,6 @@
 
     refreshMarketSummary();
     refreshStockCard('AAPL', 1);
-    refreshStockCard('TSLA', 2);
     bindSearch();
   </script>
 </body>
