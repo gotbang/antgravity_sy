@@ -55,6 +55,32 @@ def _upsert_rows(table: str, rows: list[dict], conflict: str) -> int:
     return total
 
 
+def _build_stock_summary(snapshot: dict, universe: dict) -> str:
+    name = universe.get('name') or snapshot.get('symbol') or '이 종목'
+    market = snapshot.get('market') or universe.get('market') or 'UNKNOWN'
+    snapshot_date = snapshot.get('snapshot_date') or '최근 영업일'
+    change_pct = snapshot.get('change_pct')
+    per = snapshot.get('per')
+    pbr = snapshot.get('pbr')
+
+    change_text = '등락률 데이터가 아직 없어.'
+    if change_pct is not None:
+        direction = '상승' if change_pct > 0 else '하락' if change_pct < 0 else '보합'
+        change_text = f'{snapshot_date} 기준 {direction} {change_pct}% 흐름이야.'
+
+    valuation_bits: list[str] = []
+    if per is not None:
+        valuation_bits.append(f'PER {per}')
+    if pbr is not None:
+        valuation_bits.append(f'PBR {pbr}')
+
+    valuation_text = '밸류에이션 지표는 아직 비어 있어.'
+    if valuation_bits:
+        valuation_text = ', '.join(valuation_bits) + ' 기준으로 적재됐어.'
+
+    return f'{name}({market}) 종목이야. {change_text} {valuation_text}'
+
+
 def _build_detail_cache_rows(snapshot_rows: list[dict], universe_rows: list[dict]) -> list[dict]:
     fetched_at = datetime.now(timezone.utc).isoformat()
     universe_map = {row['symbol']: row for row in universe_rows}
@@ -76,7 +102,7 @@ def _build_detail_cache_rows(snapshot_rows: list[dict], universe_rows: list[dict
                     'per': snapshot.get('per'),
                     'pbr': snapshot.get('pbr'),
                     'snapshot_date': snapshot.get('snapshot_date'),
-                    'summary': None,
+                    'summary': _build_stock_summary(snapshot, universe),
                 },
                 'fetched_at': fetched_at,
             }
@@ -94,6 +120,19 @@ def _load_existing_snapshot_rows(limit: int = 100) -> list[dict]:
         .execute()
     )
     return result.data or []
+
+
+def _merge_snapshot_rows(primary_rows: list[dict], fallback_rows: list[dict]) -> list[dict]:
+    merged: dict[str, dict] = {}
+    for row in fallback_rows:
+        symbol = row.get('symbol')
+        if symbol:
+            merged[symbol] = row
+    for row in primary_rows:
+        symbol = row.get('symbol')
+        if symbol:
+            merged[symbol] = row
+    return list(merged.values())
 
 
 def _has_required_quality_gate_rows(snapshot_rows: list[dict]) -> bool:
@@ -115,7 +154,7 @@ def refresh_all() -> None:
     all_snapshots = kr_snapshot + us_snapshot
     _upsert_rows('market_snapshot_daily', all_snapshots, 'symbol,snapshot_date')
 
-    detail_source_rows = all_snapshots or _load_existing_snapshot_rows()
+    detail_source_rows = _merge_snapshot_rows(all_snapshots, _load_existing_snapshot_rows(limit=500))
     detail_rows = _build_detail_cache_rows(detail_source_rows, ticker_universe)
     _upsert_rows('fundamentals_cache', detail_rows, 'symbol')
 
