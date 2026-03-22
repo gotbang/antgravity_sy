@@ -92,7 +92,12 @@ describe("supabase direct queries", () => {
       market: "US",
       price: 200,
       change_pct: 1.1,
-      summary: "요약"
+      summary: "요약",
+      price_status: "live",
+      price_source: "snapshot",
+      safe_activity_radius_pct: 4.2,
+      safe_activity_level: "caution",
+      safe_activity_label: "반경이 줄었어."
     });
 
     const result = await fetchStockDetailDirect("AAPL", client as never);
@@ -104,6 +109,8 @@ describe("supabase direct queries", () => {
       ["limit", 1]
     ]);
     expect(result?.symbol).toBe("AAPL");
+    expect(result?.price_status).toBe("live");
+    expect(result?.safe_activity_radius_pct).toBe(4.2);
   });
 
   it("queries the search view and keeps only the capped direct-read results", async () => {
@@ -116,7 +123,7 @@ describe("supabase direct queries", () => {
 
     expect(client.operations).toEqual([
       ["from", "v_stock_search"],
-      ["select", "symbol,name,market,sector,industry,search_text"],
+      ["select", "symbol,name,market,sector,industry,search_text,price_status,price_source"],
       ["ilike", "search_text:%삼성%"],
       ["limit", 8]
     ]);

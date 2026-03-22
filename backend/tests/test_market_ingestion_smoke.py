@@ -3,6 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from services import kr_market_ingestion
+from services import us_market_ingestion
 
 
 def test_kr_market_snapshot_includes_ohlcv_only_tickers(monkeypatch):
@@ -37,3 +38,28 @@ def test_kr_market_snapshot_falls_back_to_yahoo_when_business_day_resolution_fai
     rows = kr_market_ingestion.collect_kr_market_snapshot()
 
     assert rows == [{'symbol': '000660.KS', 'close': 150000, 'market': 'KR'}]
+
+
+def test_us_market_snapshot_falls_back_to_yahoo_chart_for_representative_symbols(monkeypatch):
+    monkeypatch.setattr(us_market_ingestion.yf, 'download', lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError('boom')))
+    monkeypatch.setattr(
+        us_market_ingestion,
+        '_fetch_yahoo_chart_snapshot',
+        lambda symbol: {
+            'symbol': symbol,
+            'market': 'US',
+            'snapshot_date': '2026-03-21',
+            'close': 123.4,
+            'change_pct': 1.2,
+            'market_cap': None,
+            'volume': 1000,
+            'per': None,
+            'pbr': None,
+            'payload': {'price_source': 'yahoo_chart_api'},
+        },
+    )
+
+    rows = us_market_ingestion.collect_us_snapshot(['AAPL', 'TSLA'])
+
+    assert {row['symbol'] for row in rows} == {'AAPL', 'TSLA'}
+    assert all(row['payload']['price_source'] == 'yahoo_chart_api' for row in rows)

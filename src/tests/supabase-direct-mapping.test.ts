@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   DIRECT_READ_FRESHNESS_HOURS,
   adaptHomeSummaryRow,
+  adaptSearchRow,
   adaptStockDetailRow,
   isFreshEnough,
   sortSearchRows
@@ -39,12 +40,35 @@ describe("supabase direct adapters", () => {
       pbr: null,
       snapshot_date: "2026-03-21",
       summary: null,
-      price_source: "snapshot"
+      price_status: "live",
+      price_source: "snapshot",
+      safe_activity_radius_pct: 4.5,
+      safe_activity_level: "safe",
+      safe_activity_label: "안전 구역이 넓어."
     });
 
     expect(result.symbol).toBe("AAPL");
     expect(result.change_pct).toBe(1.2);
+    expect(result.price_status).toBe("live");
     expect(result.price_source).toBe("snapshot");
+    expect(result.safe_activity_radius_pct).toBe(4.5);
+    expect(result.safe_activity_level).toBe("safe");
+  });
+
+  it("maps search rows with availability metadata", () => {
+    const result = adaptSearchRow({
+      symbol: "AAPL",
+      name: "Apple Inc.",
+      market: "US",
+      sector: null,
+      industry: null,
+      search_text: "aapl apple inc.",
+      price_status: "fallback",
+      price_source: "cache_fallback"
+    });
+
+    expect(result.price_status).toBe("fallback");
+    expect(result.price_source).toBe("cache_fallback");
   });
 
   it("treats timestamps inside the freshness window as valid", () => {

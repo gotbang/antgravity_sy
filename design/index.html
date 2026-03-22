@@ -4,6 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AntGravity - 개미 생존기</title>
+  <link rel="icon" type="image/png" href="pavicon.png">
+  <script>
+    const originalConsoleWarn = console.warn.bind(console);
+    console.warn = (...args) => {
+      const message = String(args[0] ?? '');
+      if (message.includes('cdn.tailwindcss.com should not be used in production')) {
+        return;
+      }
+      originalConsoleWarn(...args);
+    };
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <link rel="stylesheet" href="tokens.css">
@@ -461,7 +472,7 @@
               <div class="flex gap-3 items-start">
                 <div class="flex flex-col items-center gap-1 animate-float">
                   <div class="w-16 h-16 ant-orb rounded-full">
-                    <img src="soldier.png" alt="병정개미" class="ant-avatar">
+                    <img src="soldier.webp" alt="병정개미" class="ant-avatar">
                   </div>
                   <span class="status-shell px-2 py-0.5 text-[10px] font-extrabold">병정개미</span>
                 </div>
@@ -479,7 +490,7 @@
               <div class="flex gap-3 items-start">
                 <div class="flex flex-col items-center gap-1 animate-float" style="animation-delay: 0.5s">
                   <div class="w-16 h-16 ant-orb rounded-full">
-                    <img src="queen.png" alt="여왕개미" class="ant-avatar">
+                    <img src="queen.webp" alt="여왕개미" class="ant-avatar">
                   </div>
                   <span class="status-shell px-2 py-0.5 text-[10px] font-extrabold">여왕개미</span>
                 </div>
@@ -538,8 +549,11 @@
           <div id="tab-analysis" class="tab-content">
             <div class="space-y-4">
               <div class="relative">
-                <input id="stock-search-input" type="text" placeholder="종목을 검색하세요..." class="w-full bg-[#FFF9F1] border-[3px] border-[#5E3A23] rounded-[20px] px-4 py-3 pl-10 text-sm font-semibold text-[#2F1C12] focus:outline-none focus:border-[#3D2416] focus:ring-2 focus:ring-[#F1B640]/30">
+                <input id="stock-search-input" type="text" placeholder="종목을 검색하세요..." class="w-full bg-[#FFF9F1] border-[3px] border-[#5E3A23] rounded-[20px] px-4 py-3 pl-10 pr-28 text-sm font-semibold text-[#2F1C12] focus:outline-none focus:border-[#3D2416] focus:ring-2 focus:ring-[#F1B640]/30">
                 <i data-lucide="search" class="lucide-icon lucide-icon-sm text-[#6E4C39] absolute left-3 top-1/2 -translate-y-1/2"></i>
+                <button id="stock-search-button" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 rounded-full border-[3px] border-[#5E3A23] bg-[#F1B640] text-xs font-extrabold text-[#2F1C12] shadow-soft">
+                  검색
+                </button>
               </div>
 
               <div class="character-card p-4">
@@ -637,7 +651,7 @@
               <div class="flex gap-3 items-start">
                 <div class="flex flex-col items-center gap-1 animate-float">
                   <div class="w-16 h-16 ant-orb rounded-full">
-                    <img src="observer.png" alt="정찰개미" class="ant-avatar">
+                    <img src="observer.webp" alt="정찰개미" class="ant-avatar">
                   </div>
                   <span class="status-shell px-2 py-0.5 text-[10px] font-extrabold">정찰개미</span>
                 </div>
@@ -751,18 +765,20 @@
       });
 
       document.getElementById('tab-' + tabId).classList.add('active');
-      navIndicator.style.transform = `translateX(${index * 106}%)`;
+      if (navIndicator) {
+        navIndicator.style.transform = `translateX(${index * 106}%)`;
+      }
 
       navBtns.forEach((btn, i) => {
-        const icon = btn.querySelector('i');
+        const icon = btn.querySelector('svg');
         const label = btn.querySelector('.nav-label');
+        const color = i === index ? '#2F1C12' : '#6E4C39';
 
-        if (i === index) {
-          icon.style.color = '#2F1C12';
-          label.style.color = '#2F1C12';
-        } else {
-          icon.style.color = '#6E4C39';
-          label.style.color = '#6E4C39';
+        if (icon) {
+          icon.style.color = color;
+        }
+        if (label) {
+          label.style.color = color;
         }
       });
     }
@@ -802,18 +818,27 @@
       return `${prefix}${num.toFixed(1)}%`;
     }
 
-    function formatPrice(value) {
+    function formatPrice(value, market) {
       const num = Number(value ?? 0);
       if (!Number.isFinite(num)) return '-';
+      const currency = market === 'KR' ? 'KRW' : 'USD';
       return new Intl.NumberFormat('ko-KR', {
         style: 'currency',
-        currency: 'USD',
+        currency,
         maximumFractionDigits: 2,
       }).format(num);
     }
 
+    function resolveApiUrl(path) {
+      const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+      const baseOrigin = isLocalHost && window.location.port !== '8000'
+        ? 'http://127.0.0.1:8000'
+        : window.location.origin;
+      return new URL(path, baseOrigin).toString();
+    }
+
     async function fetchJson(url) {
-      const response = await fetch(url);
+      const response = await fetch(resolveApiUrl(url));
       if (!response.ok) {
         throw new Error(`${url} ${response.status}`);
       }
@@ -851,7 +876,7 @@
         const detail = await fetchJson(`/api/stocks/${encodeURIComponent(symbol)}`);
         applyText(document.getElementById(`stock-card-${index}-name`), detail.name ?? symbol);
         applyText(document.getElementById(`stock-card-${index}-symbol`), detail.symbol ?? symbol);
-        applyText(document.getElementById(`stock-card-${index}-price`), formatPrice(detail.price));
+        applyText(document.getElementById(`stock-card-${index}-price`), formatPrice(detail.price, detail.market));
 
         const changeEl = document.getElementById(`stock-card-${index}-change`);
         const changePct = Number(detail.change_pct ?? detail.changePct ?? 0);
@@ -865,25 +890,40 @@
       }
     }
 
+    async function performSearch(query) {
+      if (!query) return;
+
+      try {
+        const result = await fetchJson(`/api/stocks/search?q=${encodeURIComponent(query)}`);
+        const first = Array.isArray(result.items) ? result.items[0] : null;
+        if (first?.symbol) {
+          await refreshStockCard(first.symbol, 1);
+          showToast(`${first.name ?? first.symbol} 종목을 찾았어.`);
+          return;
+        }
+        showToast('검색 결과가 없어. 다른 종목명을 입력해줘.');
+      } catch (error) {
+        console.error('stock search failed', error);
+        showToast('검색 중 문제가 생겼어. 잠시 후 다시 시도해줘.');
+      }
+    }
+
     async function bindSearch() {
       const input = document.getElementById('stock-search-input');
+      const button = document.getElementById('stock-search-button');
       if (!input) return;
 
       input.addEventListener('keydown', async (event) => {
         if (event.key !== 'Enter') return;
-        const query = input.value.trim();
-        if (!query) return;
-
-        try {
-          const result = await fetchJson(`/api/stocks/search?q=${encodeURIComponent(query)}`);
-          const first = Array.isArray(result.items) ? result.items[0] : null;
-          if (first?.symbol) {
-            await refreshStockCard(first.symbol, 1);
-          }
-        } catch (error) {
-          console.error('stock search failed', error);
-        }
+        event.preventDefault();
+        await performSearch(input.value.trim());
       });
+
+      if (button) {
+        button.addEventListener('click', async () => {
+          await performSearch(input.value.trim());
+        });
+      }
     }
 
     document.querySelectorAll('.mood-card').forEach((card) => {

@@ -39,6 +39,53 @@ export function formatDirectPrice(value, market) {
   }).format(numberValue);
 }
 
+function resolvePriceStatusText(detail) {
+  if (detail.price_status === "fallback") {
+    return "최근 캐시 가격으로 보여주고 있어.";
+  }
+  if (detail.price_status === "missing") {
+    return "시세 미적재 상태야.";
+  }
+  return "최신 적재 가격이야.";
+}
+
+function resolveActivityLevelText(level) {
+  if (level === "safe") {
+    return "안전";
+  }
+  if (level === "danger") {
+    return "고위험";
+  }
+  return "주의";
+}
+
+function applyActivityBadgeState(element, level) {
+  if (!element) {
+    return;
+  }
+  element.classList.remove("bg-[#E6F4DA]", "bg-[#FFF2CF]", "bg-[#F7D8D0]");
+  element.classList.remove("text-[#35563B]", "text-[#7A4C00]", "text-[#8C3B2A]");
+  if (level === "safe") {
+    element.classList.add("bg-[#E6F4DA]", "text-[#35563B]");
+    return;
+  }
+  if (level === "danger") {
+    element.classList.add("bg-[#F7D8D0]", "text-[#8C3B2A]");
+    return;
+  }
+  element.classList.add("bg-[#FFF2CF]", "text-[#7A4C00]");
+}
+
+function resolveSearchBadgeText(item) {
+  if (item.price_status === "fallback") {
+    return "캐시";
+  }
+  if (item.price_status === "missing") {
+    return "가격 준비중";
+  }
+  return "실시간";
+}
+
 export async function loadTodayTab({
   documentRef = document,
   fetchHomeSummary = fetchHomeSummaryDirect
@@ -86,18 +133,44 @@ export async function loadStockCard({
 
   applyText(documentRef.getElementById(`stock-card-${index}-name`), detail.name ?? symbol);
   applyText(documentRef.getElementById(`stock-card-${index}-symbol`), detail.symbol ?? symbol);
+  const priceElement = documentRef.getElementById(`stock-card-${index}-price`);
   applyText(
-    documentRef.getElementById(`stock-card-${index}-price`),
-    formatDirectPrice(detail.price, detail.market)
+    priceElement,
+    detail.price_status === "missing"
+      ? "가격 준비중"
+      : formatDirectPrice(detail.price, detail.market)
+  );
+  applyText(
+    documentRef.getElementById(`stock-card-${index}-price-status`),
+    resolvePriceStatusText(detail)
   );
 
   const changeElement = documentRef.getElementById(`stock-card-${index}-change`);
   const changePct = Number(detail.change_pct ?? detail.changePct ?? 0);
-  applyText(changeElement, formatSignedPercent(changePct));
   if (changeElement) {
-    changeElement.classList.remove("text-[#6AA84F]", "text-[#A45B3E]");
-    changeElement.classList.add(changePct >= 0 ? "text-[#6AA84F]" : "text-[#A45B3E]");
+    changeElement.classList.remove("text-[#6AA84F]", "text-[#A45B3E]", "text-[#8E715C]");
+    if (detail.price_status === "missing" && detail.change_pct == null && detail.changePct == null) {
+      applyText(changeElement, "변동 미확인");
+      changeElement.classList.add("text-[#8E715C]");
+    } else {
+      applyText(changeElement, formatSignedPercent(changePct));
+      changeElement.classList.add(changePct >= 0 ? "text-[#6AA84F]" : "text-[#A45B3E]");
+    }
   }
+
+  const radiusValue = Number(detail.safe_activity_radius_pct ?? 5);
+  applyText(documentRef.getElementById(`stock-card-${index}-radius-value`), `±${radiusValue.toFixed(1)}%`);
+  const radiusBadge = documentRef.getElementById(`stock-card-${index}-radius-badge`);
+  applyText(radiusBadge, resolveActivityLevelText(detail.safe_activity_level));
+  applyActivityBadgeState(radiusBadge, detail.safe_activity_level);
+  applyText(
+    documentRef.getElementById(`stock-card-${index}-radius-caption`),
+    detail.safe_activity_label ?? "반경 계산 데이터가 아직 없어."
+  );
+  applyPercentBar(
+    documentRef.getElementById(`stock-card-${index}-radius-bar`),
+    (radiusValue / 6) * 100
+  );
 
   return detail;
 }
@@ -176,7 +249,10 @@ function renderSearchResults({
           <p class="text-sm font-extrabold text-[#2F1C12]">${item.name ?? item.symbol}</p>
           <p class="text-[11px] font-semibold text-[#8E715C]">${item.symbol}</p>
         </div>
-        <span class="status-shell px-2 py-1 text-[10px] font-extrabold">${item.market ?? "-"}</span>
+        <div class="flex flex-col items-end gap-1">
+          <span class="status-shell px-2 py-1 text-[10px] font-extrabold">${item.market ?? "-"}</span>
+          <span class="text-[10px] font-bold text-[#8E715C]">${resolveSearchBadgeText(item)}</span>
+        </div>
       </div>
     `;
     button.addEventListener("click", async () => {

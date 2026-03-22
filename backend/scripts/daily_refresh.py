@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.supabase_client import get_supabase
+from services.activity_radius_policy import build_safe_activity_radius
 from services.kr_market_ingestion import collect_kr_market_snapshot, collect_kr_universe
 from services.kr_fundamentals_ingestion import collect_kr_fundamentals
 from services.market_summary_builder import build_market_summary
@@ -81,13 +82,19 @@ def _build_stock_summary(snapshot: dict, universe: dict) -> str:
     return f'{name}({market}) 종목이야. {change_text} {valuation_text}'
 
 
-def _build_detail_cache_rows(snapshot_rows: list[dict], universe_rows: list[dict]) -> list[dict]:
+def _build_detail_cache_rows(
+    snapshot_rows: list[dict],
+    universe_rows: list[dict],
+    market_summary: dict | None = None,
+) -> list[dict]:
     fetched_at = datetime.now(timezone.utc).isoformat()
     universe_map = {row['symbol']: row for row in universe_rows}
     rows: list[dict] = []
     for snapshot in snapshot_rows:
         symbol = snapshot['symbol']
         universe = universe_map.get(symbol, {})
+        activity_radius = build_safe_activity_radius(snapshot, market_summary)
+        price = snapshot.get('close')
         rows.append(
             {
                 'symbol': symbol,
@@ -95,7 +102,7 @@ def _build_detail_cache_rows(snapshot_rows: list[dict], universe_rows: list[dict
                     'symbol': symbol,
                     'name': universe.get('name') or symbol,
                     'market': snapshot.get('market') or universe.get('market'),
-                    'price': snapshot.get('close'),
+                    'price': price,
                     'change_pct': snapshot.get('change_pct'),
                     'market_cap': snapshot.get('market_cap'),
                     'volume': snapshot.get('volume'),
@@ -103,6 +110,9 @@ def _build_detail_cache_rows(snapshot_rows: list[dict], universe_rows: list[dict
                     'pbr': snapshot.get('pbr'),
                     'snapshot_date': snapshot.get('snapshot_date'),
                     'summary': _build_stock_summary(snapshot, universe),
+                    'price_status': 'live' if price is not None else 'missing',
+                    'price_source': 'snapshot' if price is not None else 'unavailable',
+                    **activity_radius,
                 },
                 'fetched_at': fetched_at,
             }
@@ -131,13 +141,28 @@ def _merge_snapshot_rows(primary_rows: list[dict], fallback_rows: list[dict]) ->
     for row in primary_rows:
         symbol = row.get('symbol')
         if symbol:
-            merged[symbol] = row
+            existing = merged.get(symbol, {})
+            merged[symbol] = {
+                **existing,
+                **row,
+                'snapshot_date': row.get('snapshot_date') or existing.get('snapshot_date'),
+                'close': row.get('close') if row.get('close') is not None else existing.get('close'),
+                'change_pct': row.get('change_pct') if row.get('change_pct') is not None else existing.get('change_pct'),
+                'market_cap': row.get('market_cap') if row.get('market_cap') is not None else existing.get('market_cap'),
+                'volume': row.get('volume') if row.get('volume') is not None else existing.get('volume'),
+                'per': row.get('per') if row.get('per') is not None else existing.get('per'),
+                'pbr': row.get('pbr') if row.get('pbr') is not None else existing.get('pbr'),
+                'payload': row.get('payload') or existing.get('payload'),
+            }
     return list(merged.values())
 
 
 def _has_required_quality_gate_rows(snapshot_rows: list[dict]) -> bool:
-    symbols = {row.get('symbol') for row in snapshot_rows}
-    return all(symbol in symbols for symbol in REQUIRED_QUALITY_GATE_SYMBOLS)
+    row_map = {row.get('symbol'): row for row in snapshot_rows}
+    return all(
+        row_map.get(symbol) and row_map[symbol].get('close') is not None
+        for symbol in REQUIRED_QUALITY_GATE_SYMBOLS
+    )
 
 
 def refresh_all() -> None:
@@ -156,19 +181,24 @@ def refresh_all() -> None:
 
     existing_snapshot_rows = _load_existing_snapshot_rows(limit=500)
     detail_source_rows = _merge_snapshot_rows(all_snapshots, existing_snapshot_rows)
-    detail_rows = _build_detail_cache_rows(detail_source_rows, ticker_universe)
+    summary = build_market_summary(detail_source_rows) if detail_source_rows else None
+    detail_rows = _build_detail_cache_rows(detail_source_rows, ticker_universe, summary)
     _upsert_rows('fundamentals_cache', detail_rows, 'symbol')
+    detail_payload_map = {row['symbol']: row['payload'] for row in detail_rows}
 
     if kr_universe:
         first_symbol = kr_universe[0]['symbol'].replace('.KS', '')
         try:
             payload = collect_kr_fundamentals(first_symbol, '2025')
-            upsert_json('fundamentals_cache', {'symbol': kr_universe[0]['symbol'], 'payload': payload}, 'symbol')
+            merged_payload = {
+                **detail_payload_map.get(kr_universe[0]['symbol'], {}),
+                **payload,
+            }
+            upsert_json('fundamentals_cache', {'symbol': kr_universe[0]['symbol'], 'payload': merged_payload}, 'symbol')
         except Exception:
             pass
 
-    if detail_source_rows:
-        summary = build_market_summary(detail_source_rows)
+    if summary:
         upsert_json('market_summary_cache', {'cache_key': 'home', 'payload': summary}, 'cache_key')
         upsert_json('market_summary_cache', {'cache_key': 'trending', 'payload': {'items': detail_source_rows[:10]}}, 'cache_key')
 

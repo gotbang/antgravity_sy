@@ -23,7 +23,8 @@ describe("US2 search list direct-read", () => {
       Array.from({ length: 10 }, (_, index) => ({
         symbol: `SYM${index}`,
         name: `종목${index}`,
-        market: index % 2 === 0 ? "KR" : "US"
+        market: index % 2 === 0 ? "KR" : "US",
+        price_status: index % 3 === 0 ? "missing" : index % 3 === 1 ? "fallback" : "live",
       })).slice(0, 8)
     );
 
@@ -44,5 +45,7 @@ describe("US2 search list direct-read", () => {
     expect(searchStocks).toHaveBeenCalledWith("삼성");
     expect(document.getElementById("stock-search-results")?.classList.contains("hidden")).toBe(false);
     expect(document.querySelectorAll("#stock-search-results-list button")).toHaveLength(8);
+    expect(document.getElementById("stock-search-results-list")?.textContent).toContain("가격 준비중");
+    expect(document.getElementById("stock-search-results-list")?.textContent).toContain("캐시");
   });
 });

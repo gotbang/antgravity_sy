@@ -44,4 +44,13 @@ describe("US1 home summary direct-read", () => {
     expect(document.getElementById("today-risk-caption")?.textContent).toContain("상승 14개");
     expect(globalThis.fetch).toBe(legacyFetch);
   });
+
+  it("keeps loading-friendly placeholders when summary data is unavailable", async () => {
+    const result = await loadTodayTab({
+      fetchHomeSummary: async () => null,
+    });
+
+    expect(result).toBeNull();
+    expect(document.getElementById("today-risk-score")?.textContent).toBe("");
+  });
 });

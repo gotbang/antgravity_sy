@@ -42,11 +42,14 @@ def test_build_detail_cache_rows_populates_fallback_summary():
         }
     ]
 
-    rows = daily_refresh._build_detail_cache_rows(snapshot_rows, universe_rows)
+    rows = daily_refresh._build_detail_cache_rows(snapshot_rows, universe_rows, {'fearGreedIndex': 48})
 
     assert rows[0]['payload']['summary'] is not None
     assert 'Apple Inc.' in rows[0]['payload']['summary']
     assert '2026-03-20' in rows[0]['payload']['summary']
+    assert rows[0]['payload']['price'] == 247.99
+    assert rows[0]['payload']['price_status'] == 'live'
+    assert 1.5 <= rows[0]['payload']['safe_activity_radius_pct'] <= 6.0
 
 
 def test_merge_snapshot_rows_keeps_fallback_symbols_when_primary_is_partial():
@@ -87,3 +90,61 @@ def test_daily_refresh_builds_home_summary_from_merged_snapshot_rows(monkeypatch
     payload = home_rows[0]['payload']
     assert payload['advancers'] == 1
     assert payload['decliners'] == 1
+
+
+def test_merge_snapshot_rows_reuses_previous_price_when_primary_row_is_missing_values():
+    primary_rows = [
+        {'symbol': 'AAPL', 'snapshot_date': '2026-03-21', 'close': None, 'change_pct': None, 'volume': None},
+    ]
+    fallback_rows = [
+        {'symbol': 'AAPL', 'snapshot_date': '2026-03-20', 'close': 200, 'change_pct': -1.5, 'volume': 500},
+    ]
+
+    rows = daily_refresh._merge_snapshot_rows(primary_rows, fallback_rows)
+
+    assert rows[0]['close'] == 200
+    assert rows[0]['change_pct'] == -1.5
+    assert rows[0]['snapshot_date'] == '2026-03-21'
+
+
+def test_daily_refresh_preserves_representative_us_prices_from_existing_snapshot_rows(monkeypatch):
+    upserts = []
+
+    monkeypatch.setattr(daily_refresh, '_clear_broken_proxy_env', lambda: None)
+    monkeypatch.setattr(daily_refresh, 'collect_kr_universe', lambda: [{'symbol': '000660.KS', 'market': 'KR', 'name': 'SK하이닉스'}])
+    monkeypatch.setattr(
+        daily_refresh,
+        'collect_us_universe',
+        lambda: [
+            {'symbol': 'AAPL', 'market': 'US', 'name': 'Apple Inc.'},
+            {'symbol': 'TSLA', 'market': 'US', 'name': 'Tesla, Inc.'},
+        ],
+    )
+    monkeypatch.setattr(daily_refresh, 'collect_kr_market_snapshot', lambda: [])
+    monkeypatch.setattr(daily_refresh, 'collect_us_snapshot', lambda _symbols: [])
+    def fake_upsert_rows(table, rows, _conflict):
+        for row in rows:
+            upserts.append((table, row, _conflict))
+        return len(rows)
+
+    monkeypatch.setattr(daily_refresh, '_upsert_rows', fake_upsert_rows)
+    monkeypatch.setattr(
+        daily_refresh,
+        '_load_existing_snapshot_rows',
+        lambda *args, **kwargs: [
+            {'symbol': 'AAPL', 'market': 'US', 'snapshot_date': '2026-03-20', 'close': 201.1, 'change_pct': 1.0, 'market_cap': None, 'volume': 50000, 'per': None, 'pbr': None},
+            {'symbol': 'TSLA', 'market': 'US', 'snapshot_date': '2026-03-20', 'close': 299.1, 'change_pct': -2.5, 'market_cap': None, 'volume': 60000, 'per': None, 'pbr': None},
+            {'symbol': '000660.KS', 'market': 'KR', 'snapshot_date': '2026-03-20', 'close': 100000, 'change_pct': 0.3, 'market_cap': None, 'volume': 70000, 'per': None, 'pbr': None},
+        ],
+    )
+    monkeypatch.setattr(daily_refresh, 'upsert_json', lambda table, row, conflict: upserts.append((table, row, conflict)))
+
+    daily_refresh.refresh_all()
+
+    detail_rows = [row for table, row, _conflict in upserts if table == 'fundamentals_cache']
+    payloads = {row['symbol']: row['payload'] for row in detail_rows}
+
+    assert payloads['AAPL']['price'] == 201.1
+    assert payloads['TSLA']['price'] == 299.1
+    assert payloads['AAPL']['price_status'] == 'live'
+    assert payloads['TSLA']['price_status'] == 'live'

@@ -35,7 +35,11 @@ describe("US2 search keyboard and selection", () => {
       pbr: null,
       snapshot_date: null,
       summary: null,
-      price_source: "snapshot"
+      price_status: "live",
+      price_source: "snapshot",
+      safe_activity_radius_pct: 4.1,
+      safe_activity_level: "caution",
+      safe_activity_label: "반경이 줄었어."
     }));
     const onToast = vi.fn();
 

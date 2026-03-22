@@ -1,4 +1,4 @@
-import { adaptHomeSummaryRow, adaptStockDetailRow, sortSearchRows } from "./supabase-adapters.js";
+import { adaptHomeSummaryRow, adaptSearchRow, adaptStockDetailRow, sortSearchRows } from "./supabase-adapters.js";
 import { getBrowserSupabase } from "./supabase-browser.js";
 
 export async function fetchHomeSummaryDirect(client = getBrowserSupabase()) {
@@ -23,7 +23,7 @@ export async function searchStocksDirect(query, client = getBrowserSupabase()) {
 
   const { data, error } = await client
     .from("v_stock_search")
-    .select("symbol,name,market,sector,industry,search_text")
+    .select("symbol,name,market,sector,industry,search_text,price_status,price_source")
     .ilike("search_text", `%${safeQuery}%`)
     .limit(8);
 
@@ -31,7 +31,7 @@ export async function searchStocksDirect(query, client = getBrowserSupabase()) {
     throw error;
   }
 
-  return sortSearchRows(data ?? [], safeQuery);
+  return sortSearchRows((data ?? []).map(adaptSearchRow), safeQuery);
 }
 
 export async function fetchStockDetailDirect(symbol, client = getBrowserSupabase()) {

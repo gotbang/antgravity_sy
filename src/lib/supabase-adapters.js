@@ -43,7 +43,24 @@ export function adaptStockDetailRow(row) {
     pbr: row.pbr ?? null,
     snapshot_date: row.snapshot_date ?? null,
     summary: row.summary ?? null,
-    price_source: row.price_source ?? null
+    price_status: row.price_status ?? "missing",
+    price_source: row.price_source ?? "unavailable",
+    safe_activity_radius_pct: Number(row.safe_activity_radius_pct ?? 5),
+    safe_activity_level: row.safe_activity_level ?? "caution",
+    safe_activity_label: row.safe_activity_label ?? "반경 계산 데이터가 아직 없어."
+  };
+}
+
+export function adaptSearchRow(row) {
+  return {
+    symbol: row.symbol,
+    name: row.name ?? row.symbol,
+    market: row.market,
+    sector: row.sector ?? null,
+    industry: row.industry ?? null,
+    search_text: row.search_text ?? "",
+    price_status: row.price_status ?? "missing",
+    price_source: row.price_source ?? "unavailable"
   };
 }
 

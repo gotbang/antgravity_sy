@@ -482,14 +482,14 @@
               <div class="flex gap-3 items-start">
                 <div class="flex flex-col items-center gap-1 animate-float">
                   <div class="w-16 h-16 ant-orb rounded-full">
-                    <img src="design/soldier.png" alt="병정개미" class="ant-avatar">
+                    <img src="design/soldier.webp" alt="병정개미" class="ant-avatar">
                   </div>
                   <span class="status-shell px-2 py-0.5 text-[10px] font-extrabold">병정개미</span>
                 </div>
                 <div class="flex-1 speech-bubble">
                   <div class="flex justify-between items-center mb-2">
                     <span class="status-shell px-2 py-1 text-[10px] font-extrabold">시장 리스크 경보</span>
-                    <span id="today-risk-stage" class="text-[11px] font-extrabold text-[#6E4C39]">주의단계</span>
+                    <span id="today-risk-stage" class="text-[11px] font-extrabold text-[#6E4C39]">로딩중</span>
                   </div>
                   <p class="text-[13px] font-semibold text-[#2F1C12] leading-snug">
                     "바람이 너무 셉니다! 몸이 가벼운 일개미는 날아갈 수 있으니 <strong>굴 밖 진출(매수)을 자제</strong>하세요!"
@@ -500,14 +500,14 @@
               <div class="flex gap-3 items-start">
                 <div class="flex flex-col items-center gap-1 animate-float" style="animation-delay: 0.5s">
                   <div class="w-16 h-16 ant-orb rounded-full">
-                    <img src="design/queen.png" alt="여왕개미" class="ant-avatar">
+                    <img src="design/queen.webp" alt="여왕개미" class="ant-avatar">
                   </div>
                   <span class="status-shell px-2 py-0.5 text-[10px] font-extrabold">여왕개미</span>
                 </div>
                 <div class="flex-1 speech-bubble">
                   <div class="flex justify-between items-center mb-2">
                     <span class="status-shell px-2 py-1 text-[10px] font-extrabold">AI 페로몬 분석</span>
-                    <span id="today-market-mood" class="text-[10px] font-bold text-[#8E715C]">오늘의 예측</span>
+                    <span id="today-market-mood" class="text-[10px] font-bold text-[#8E715C]">데이터 확인중</span>
                   </div>
                   <p id="today-ai-summary" class="text-[12px] font-semibold text-[#6E4C39] leading-snug mb-2">시장 데이터를 불러오는 중...</p>
 
@@ -546,12 +546,12 @@
               <div class="character-card p-4">
                 <div class="flex items-center justify-between mb-3">
                   <span class="section-title text-sm font-extrabold">오늘의 리스크 점수</span>
-                  <span class="text-2xl font-black text-[#5E3A23]"><span id="today-risk-score">68</span><span class="text-sm text-[#8E715C]">/100</span></span>
+                  <span class="text-2xl font-black text-[#5E3A23]"><span id="today-risk-score">--</span><span class="text-sm text-[#8E715C]">/100</span></span>
                 </div>
                 <div class="progress-bar h-3">
-                  <div id="today-risk-bar" class="progress-fill honey w-[68%]"></div>
+                  <div id="today-risk-bar" class="progress-fill honey w-[0%]"></div>
                 </div>
-                <p id="today-risk-caption" class="text-xs text-[#8E715C] mt-3 font-semibold">신중하게 움직이세요. 무리한 활동은 위험합니다.</p>
+                <p id="today-risk-caption" class="text-xs text-[#8E715C] mt-3 font-semibold">시장 데이터를 확인하는 중이야.</p>
               </div>
             </div>
           </div>
@@ -582,15 +582,22 @@
                   <div class="text-right">
                     <p id="stock-card-1-price" class="font-black text-[#2F1C12]">$178.50</p>
                     <p id="stock-card-1-change" class="text-xs text-[#6AA84F] font-extrabold">+2.3%</p>
+                    <p id="stock-card-1-price-status" class="text-[11px] text-[#8E715C] font-semibold mt-1">최신 적재 가격이야.</p>
                   </div>
                 </div>
 
                 <div class="mb-4">
                   <div class="flex justify-between text-xs mb-2 font-semibold">
                     <span class="text-[#6E4C39]">안전 활동 반경</span>
-                    <span class="font-extrabold text-[#5E3A23]">±5%</span>
+                    <div class="flex items-center gap-2">
+                      <span id="stock-card-1-radius-badge" class="status-shell px-2 py-1 text-[10px] font-extrabold bg-[#FFF2CF] text-[#7A4C00]">계산중</span>
+                      <span id="stock-card-1-radius-value" class="font-extrabold text-[#5E3A23]">±5.0%</span>
+                    </div>
                   </div>
-                  <input type="range" min="1" max="20" value="5" class="w-full">
+                  <div class="progress-bar h-3">
+                    <div id="stock-card-1-radius-bar" class="progress-fill honey w-[50%]"></div>
+                  </div>
+                  <p id="stock-card-1-radius-caption" class="text-[11px] text-[#8E715C] font-semibold mt-2">반경 계산 데이터를 준비하는 중이야.</p>
                 </div>
 
                 <div class="market-badge p-3 mb-3">
@@ -622,7 +629,7 @@
               <div class="flex gap-3 items-start">
                 <div class="flex flex-col items-center gap-1 animate-float">
                   <div class="w-16 h-16 ant-orb rounded-full">
-                    <img src="design/observer.png" alt="정찰개미" class="ant-avatar">
+                    <img src="design/observer.webp" alt="정찰개미" class="ant-avatar">
                   </div>
                   <span class="status-shell px-2 py-0.5 text-[10px] font-extrabold">정찰개미</span>
                 </div>
