@@ -154,7 +154,8 @@ def refresh_all() -> None:
     all_snapshots = kr_snapshot + us_snapshot
     _upsert_rows('market_snapshot_daily', all_snapshots, 'symbol,snapshot_date')
 
-    detail_source_rows = _merge_snapshot_rows(all_snapshots, _load_existing_snapshot_rows(limit=500))
+    existing_snapshot_rows = _load_existing_snapshot_rows(limit=500)
+    detail_source_rows = _merge_snapshot_rows(all_snapshots, existing_snapshot_rows)
     detail_rows = _build_detail_cache_rows(detail_source_rows, ticker_universe)
     _upsert_rows('fundamentals_cache', detail_rows, 'symbol')
 
@@ -166,10 +167,10 @@ def refresh_all() -> None:
         except Exception:
             pass
 
-    if all_snapshots:
-        summary = build_market_summary(all_snapshots)
+    if detail_source_rows:
+        summary = build_market_summary(detail_source_rows)
         upsert_json('market_summary_cache', {'cache_key': 'home', 'payload': summary}, 'cache_key')
-        upsert_json('market_summary_cache', {'cache_key': 'trending', 'payload': {'items': all_snapshots[:10]}}, 'cache_key')
+        upsert_json('market_summary_cache', {'cache_key': 'trending', 'payload': {'items': detail_source_rows[:10]}}, 'cache_key')
 
 
 if __name__ == '__main__':
