@@ -24,3 +24,16 @@ def test_kr_market_snapshot_includes_ohlcv_only_tickers(monkeypatch):
 
     assert '005930.KS' in symbols
     assert '000660.KS' in symbols
+
+
+def test_kr_market_snapshot_falls_back_to_yahoo_when_business_day_resolution_fails(monkeypatch):
+    monkeypatch.setattr(kr_market_ingestion, '_resolve_kr_business_day', lambda _date=None: None)
+    monkeypatch.setattr(
+        kr_market_ingestion,
+        '_collect_kr_yahoo_fallback_snapshot',
+        lambda: [{'symbol': '000660.KS', 'close': 150000, 'market': 'KR'}]
+    )
+
+    rows = kr_market_ingestion.collect_kr_market_snapshot()
+
+    assert rows == [{'symbol': '000660.KS', 'close': 150000, 'market': 'KR'}]

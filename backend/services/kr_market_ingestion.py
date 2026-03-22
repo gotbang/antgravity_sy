@@ -4,7 +4,10 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import dartlab
+import httpx
 from pykrx import stock
+
+KR_FALLBACK_SYMBOLS = ("000660.KS", "005930.KS")
 
 
 def _resolve_kr_business_day(target_date: str | None = None) -> str | None:
@@ -31,12 +34,12 @@ def _resolve_kr_business_day(target_date: str | None = None) -> str | None:
 def collect_kr_market_snapshot(target_date: str | None = None) -> list[dict[str, Any]]:
     date_str = _resolve_kr_business_day(target_date)
     if not date_str:
-        return []
+        return _collect_kr_yahoo_fallback_snapshot()
 
     frame = stock.get_market_fundamental_by_ticker(date_str)
     ohlcv = stock.get_market_ohlcv_by_ticker(date_str)
     if frame.empty and ohlcv.empty:
-        return []
+        return _collect_kr_yahoo_fallback_snapshot()
 
     rows: list[dict[str, Any]] = []
     tickers = set(frame.index.tolist()) | set(ohlcv.index.tolist())
@@ -59,6 +62,65 @@ def collect_kr_market_snapshot(target_date: str | None = None) -> list[dict[str,
                 },
             }
         )
+    return rows
+
+
+def _fetch_yahoo_chart_snapshot(symbol: str) -> dict[str, Any] | None:
+    url = f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=5d&interval=1d&includeAdjustedClose=true'
+    response = httpx.get(url, timeout=30, headers={'User-Agent': 'Mozilla/5.0'})
+    response.raise_for_status()
+
+    payload = response.json()
+    result = (payload.get('chart', {}) or {}).get('result') or []
+    if not result:
+        return None
+
+    row = result[0]
+    timestamps = row.get('timestamp') or []
+    quote = ((row.get('indicators') or {}).get('quote') or [{}])[0]
+    closes = quote.get('close') or []
+    volumes = quote.get('volume') or []
+
+    valid_points = [
+        (timestamps[index], closes[index], volumes[index] if index < len(volumes) else None)
+        for index in range(min(len(timestamps), len(closes)))
+        if closes[index] is not None
+    ]
+    if not valid_points:
+        return None
+
+    last_ts, last_close, last_volume = valid_points[-1]
+    previous_close = valid_points[-2][1] if len(valid_points) >= 2 else None
+    change_pct = None
+    if previous_close not in (None, 0):
+        change_pct = round((float(last_close) - float(previous_close)) / float(previous_close) * 100, 2)
+
+    snapshot_date = datetime.fromtimestamp(last_ts).date().isoformat()
+    return {
+        'symbol': symbol,
+        'market': 'KR',
+        'snapshot_date': snapshot_date,
+        'close': float(last_close),
+        'change_pct': change_pct,
+        'market_cap': None,
+        'volume': None if last_volume is None else int(last_volume),
+        'per': None,
+        'pbr': None,
+        'payload': {
+            'price_source': 'Yahoo chart API',
+        },
+    }
+
+
+def _collect_kr_yahoo_fallback_snapshot() -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for symbol in KR_FALLBACK_SYMBOLS:
+        try:
+            snapshot = _fetch_yahoo_chart_snapshot(symbol)
+        except Exception:
+            snapshot = None
+        if snapshot:
+            rows.append(snapshot)
     return rows
 
 

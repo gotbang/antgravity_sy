@@ -21,3 +21,4 @@ Thumbs.db
 .idea/
 .claude/
 .playwright-mcp/
+src/config/public-env.generated.js

@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "sync:public-env": "node scripts/sync-public-env.mjs",
+    "dev": "pnpm run sync:public-env && python -m http.server 8080",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

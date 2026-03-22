@@ -14,6 +14,9 @@
 ### 프론트 검증 의존성 설치
 - `pnpm install`
 
+### 브라우저 직결용 공개 env 동기화
+- `pnpm run sync:public-env`
+
 ### 프론트 검증 명령
 - `pnpm lint`
 - `pnpm typecheck`
@@ -34,6 +37,10 @@
 - `python -m http.server 8080`
 - 또는 `5500` 계열 정적 서버를 써도 된다.
 - 현재 CORS 허용값에는 `5173`, `8080`, `5500` localhost 주소가 포함돼 있다.
+
+### 로컬 직결 실행 권장 경로
+- `pnpm run dev`
+- 이 명령은 루트 `.env`에서 `SUPABASE_URL`, `SUPABASE_ANON_KEY`를 읽어 `src/config/public-env.generated.js`를 갱신한 뒤 정적 서버를 띄운다.
 
 ### 확인 경로
 - 프론트
@@ -60,9 +67,9 @@
 - `ALLOWED_ORIGINS`
 
 ### 브라우저
-- 현재는 별도 Supabase 키가 필요 없다.
-- 브라우저는 정적 파일만 띄우고 데이터는 FastAPI가 대신 읽는다.
-- 직결 전환 준비용 공개 env 템플릿은 `src/config/public-env.js`에 있다.
+- direct-read 기준으로는 `SUPABASE_URL`, `SUPABASE_ANON_KEY`가 필요하다.
+- 루트 `.env`의 값은 `pnpm run sync:public-env` 또는 `pnpm run dev`로 브라우저용 `src/config/public-env.generated.js`에 반영한다.
+- 공개 env 로더는 `src/config/public-env.js`에 있다.
 
 ## 4. 다음 구현 예정 메모
 
@@ -72,7 +79,7 @@
   - `SUPABASE_URL`
   - `SUPABASE_ANON_KEY`
 - 브라우저 Supabase 클라이언트 초기화 모듈은 `src/lib/supabase-browser.js`에 둘 준비가 되어 있다.
-- 현재 이 문단은 계획 보존용이고, 실제 실행 기준은 아니다.
+- 현재는 direct-read가 실제 구현됐으므로 로컬 브라우저 실행 시 공개 env 동기화가 필요하다.
 
 ## 5. 컷오버/롤백 실행 메모
 

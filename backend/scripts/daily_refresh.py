@@ -24,7 +24,16 @@ def _clear_broken_proxy_env() -> None:
         'http://127.0.0.1:9',
         'https://127.0.0.1:9',
     }
-    for key in ('HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'GIT_HTTP_PROXY', 'GIT_HTTPS_PROXY'):
+    for key in (
+        'HTTP_PROXY',
+        'HTTPS_PROXY',
+        'ALL_PROXY',
+        'http_proxy',
+        'https_proxy',
+        'all_proxy',
+        'GIT_HTTP_PROXY',
+        'GIT_HTTPS_PROXY',
+    ):
         value = os.environ.get(key)
         if value and value.lower() in broken_proxy_values:
             os.environ.pop(key, None)
