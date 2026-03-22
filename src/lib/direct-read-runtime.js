@@ -441,3 +441,155 @@ export function createSearchController({
     }
   };
 }
+
+const diaryStorageKey = "antgravity-diary-entries";
+
+function formatDiaryDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}.${month}.${day}`;
+}
+
+function readDiaryEntries(storage) {
+  const raw = storage?.getItem(diaryStorageKey);
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDiaryEntries(storage, entries) {
+  storage?.setItem(diaryStorageKey, JSON.stringify(entries));
+}
+
+function getDiaryElements(documentRef) {
+  return {
+    textarea: documentRef.getElementById("diary-entry-input"),
+    saveButton: documentRef.getElementById("diary-save-button"),
+    list: documentRef.getElementById("diary-history-list"),
+    empty: documentRef.getElementById("diary-history-empty"),
+  };
+}
+
+function getSelectedMood(documentRef) {
+  const selected = documentRef.querySelector(".mood-card.selected");
+  return {
+    emoji: selected?.dataset.emoji ?? "🍯",
+    label: selected?.dataset.label ?? "달달해",
+  };
+}
+
+function renderDiaryEntries(entries, { list, empty, onDelete }) {
+  if (!list) {
+    return;
+  }
+
+  list.innerHTML = "";
+
+  if (!entries.length) {
+    empty?.classList.remove("hidden");
+    return;
+  }
+
+  empty?.classList.add("hidden");
+
+  entries.forEach((entry) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "market-badge p-3";
+    wrapper.innerHTML = `
+      <div class="flex items-start justify-between gap-3 mb-1">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">${entry.moodEmoji}</span>
+          <div class="flex flex-col">
+            <span class="text-xs text-[#8E715C] font-bold">${entry.createdAt}</span>
+            <span class="text-[11px] text-[#8E715C] font-extrabold">${entry.moodLabel}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          data-diary-delete-id="${entry.id}"
+          class="rounded-full border border-[#D7C1A6] bg-[#FFF8EF] px-3 py-1 text-[11px] font-extrabold text-[#8E715C]"
+        >
+          삭제
+        </button>
+      </div>
+      <p class="text-sm text-[#6E4C39] font-diary whitespace-pre-wrap">${entry.content}</p>
+    `;
+    wrapper.querySelector("[data-diary-delete-id]")?.addEventListener("click", () => {
+      onDelete(entry.id);
+    });
+    list.appendChild(wrapper);
+  });
+}
+
+export function createDiaryController({
+  documentRef = document,
+  storage = globalThis.localStorage,
+  onToast = () => {},
+  now = () => new Date(),
+} = {}) {
+  const elements = getDiaryElements(documentRef);
+  let entries = readDiaryEntries(storage);
+
+  const rerender = () => {
+    renderDiaryEntries(entries, {
+      list: elements.list,
+      empty: elements.empty,
+      onDelete: deleteEntry,
+    });
+  };
+
+  function saveEntry() {
+    const content = elements.textarea?.value?.trim() ?? "";
+    if (!content) {
+      onToast("일지를 먼저 적어줘.");
+      elements.textarea?.focus();
+      return;
+    }
+
+    const mood = getSelectedMood(documentRef);
+    const entry = {
+      id: `${now().getTime()}`,
+      createdAt: formatDiaryDate(now()),
+      moodEmoji: mood.emoji,
+      moodLabel: mood.label,
+      content,
+    };
+
+    entries = [entry, ...entries];
+    writeDiaryEntries(storage, entries);
+    rerender();
+
+    if (elements.textarea) {
+      elements.textarea.value = "";
+    }
+    onToast("생존 일지를 저장했어.");
+  }
+
+  function deleteEntry(id) {
+    entries = entries.filter((entry) => entry.id !== id);
+    writeDiaryEntries(storage, entries);
+    rerender();
+    onToast("기록을 삭제했어.");
+  }
+
+  return {
+    bind() {
+      rerender();
+      elements.saveButton?.addEventListener("click", saveEntry);
+    },
+    saveNow() {
+      saveEntry();
+    },
+    getEntries() {
+      return [...entries];
+    },
+  };
+}
