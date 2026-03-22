@@ -48,4 +48,32 @@ describe("US2 search list direct-read", () => {
     expect(document.getElementById("stock-search-results-list")?.textContent).toContain("가격 준비중");
     expect(document.getElementById("stock-search-results-list")?.textContent).toContain("캐시");
   });
+
+  it("renders search result text safely without injecting HTML", async () => {
+    const searchStocks = vi.fn(async () => [
+      {
+        symbol: "SAFE1",
+        name: "<img src=x onerror=alert(1)>",
+        market: "KR",
+        price_status: "live",
+      },
+    ]);
+
+    const controller = createSearchController({
+      searchStocks,
+      fetchStockDetail: vi.fn(),
+      onToast: vi.fn(),
+      debounceMs: 200
+    });
+    controller.bind();
+
+    const input = document.getElementById("stock-search-input") as HTMLInputElement;
+    input.value = "safe";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+
+    await vi.advanceTimersByTimeAsync(200);
+
+    expect(document.querySelector("#stock-search-results-list img")).toBeNull();
+    expect(document.getElementById("stock-search-results-list")?.textContent).toContain("<img src=x onerror=alert(1)>");
+  });
 });

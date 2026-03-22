@@ -202,3 +202,25 @@
 ### 주의점
 - 이 저장은 Supabase 동기화가 아니라 브라우저 로컬 저장이라 기기 간 공유는 안 된다.
 - 현재 워킹트리에는 이번 작업과 무관한 다른 변경도 계속 남아 있으니 커밋 범위를 분리해야 한다.
+
+## 추가 업데이트 2026-03-22 23:37:41 KST
+
+### 프론트 접근성/보안/성능 보강
+- viewport에서 `user-scalable=no`를 제거해 브라우저 확대를 막지 않게 했다.
+- 생존일지 기분 선택 카드는 클릭-only label에서 실제 radio 입력 기반으로 바꿔 키보드 접근 가능하게 했다.
+- 생존일지 textarea에는 명시 label을 연결했다.
+- 검색 결과와 생존일지 기록 렌더는 `innerHTML` 문자열 조합 대신 DOM 노드 + `textContent` 기반으로 바꿨다.
+- `/api/health` 응답은 `status`만 반환하도록 축소했다.
+- 가격 포맷터는 KR/USD `Intl.NumberFormat` 인스턴스를 모듈 상수로 캐시한다.
+- 검색 방향키 이동 시 결과 DOM 전체를 다시 만들지 않고 활성 상태 클래스만 갱신하도록 줄였다.
+
+### 이번 단계에서 확인한 것
+- `pnpm lint` 통과
+- `pnpm typecheck` 통과
+- `pnpm test` 통과
+  - 현재 기준 `8 files`, `21 tests`
+- `python -m pytest backend/tests/test_health_api.py` 통과
+
+### 이번 단계 메모
+- Supabase `anon` 키 노출 구조는 direct-read 공개 뷰 설계 기준과 일치하고, 이번 수정 범위에는 `service_role` 노출이 없다.
+- 파이썬 테스트에서 외부 라이브러리 경고는 있었지만 이번 수정과 직접 연결된 실패는 없었다.

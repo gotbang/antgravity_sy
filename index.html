@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="supabase-url" content="">
   <meta name="supabase-anon-key" content="">
   <title>AntGravity - 개미 생존기</title>
@@ -645,21 +645,25 @@
               </div>
 
               <div class="character-card p-4">
-                <h3 class="section-title text-sm font-extrabold mb-3">오늘의 기분</h3>
-                <div class="grid grid-cols-4 gap-2">
+                <h3 class="section-title text-sm font-extrabold mb-3" id="diary-mood-label">오늘의 기분</h3>
+                <div class="grid grid-cols-4 gap-2" role="radiogroup" aria-labelledby="diary-mood-label">
                   <label class="mood-card selected" data-emoji="🍯" data-label="달달해">
+                    <input class="mood-card-input sr-only" type="radio" name="diary-mood" value="달달해" checked>
                     <div class="text-3xl mb-1 animate-bounce-subtle">🍯</div>
                     <span class="text-[11px] font-extrabold text-[#2F1C12]">달달해</span>
                   </label>
                   <label class="mood-card" data-emoji="🕸️" data-label="거미줄">
+                    <input class="mood-card-input sr-only" type="radio" name="diary-mood" value="거미줄">
                     <div class="text-3xl mb-1">🕸️</div>
                     <span class="text-[11px] font-extrabold text-[#6E4C39]">거미줄</span>
                   </label>
                   <label class="mood-card" data-emoji="💧" data-label="물방울">
+                    <input class="mood-card-input sr-only" type="radio" name="diary-mood" value="물방울">
                     <div class="text-3xl mb-1">💧</div>
                     <span class="text-[11px] font-extrabold text-[#6E4C39]">물방울</span>
                   </label>
                   <label class="mood-card" data-emoji="💤" data-label="동면">
+                    <input class="mood-card-input sr-only" type="radio" name="diary-mood" value="동면">
                     <div class="text-3xl mb-1">💤</div>
                     <span class="text-[11px] font-extrabold text-[#6E4C39]">동면</span>
                   </label>
@@ -668,6 +672,7 @@
 
               <div class="character-card brown-surface p-4">
                 <h3 class="font-display text-sm font-extrabold mb-3 text-[#FFF8EF]">생존 일기</h3>
+                <label for="diary-entry-input" class="sr-only">생존 일기 내용</label>
                 <textarea id="diary-entry-input" class="w-full h-32 diary-bg border-[2px] border-[#5E3A23] rounded-[18px] p-3 text-sm font-diary text-[#5E3A23] resize-none focus:outline-none focus:ring-2 focus:ring-[#F1B640]/40" placeholder="오늘 하루를 기록해보세요..."></textarea>
                 <button id="diary-save-button" class="honey-button w-full mt-4 py-3 text-[18px]">
                   저장하기
@@ -769,51 +774,6 @@
       }, 2500);
     }
 
-    function applyText(el, value) {
-      if (el && value !== undefined && value !== null) {
-        el.textContent = String(value);
-      }
-    }
-
-    function applyPercentBar(el, value) {
-      if (!el || value === undefined || value === null) return;
-      const safe = Math.max(0, Math.min(100, Number(value)));
-      el.style.width = `${safe}%`;
-    }
-
-    function formatSignedPercent(value) {
-      const num = Number(value ?? 0);
-      const prefix = num > 0 ? '+' : '';
-      return `${prefix}${num.toFixed(1)}%`;
-    }
-
-    function formatPrice(value, market) {
-      const num = Number(value ?? 0);
-      if (!Number.isFinite(num)) return '-';
-      const currency = market === 'KR' ? 'KRW' : 'USD';
-      return new Intl.NumberFormat('ko-KR', {
-        style: 'currency',
-        currency,
-        maximumFractionDigits: 2,
-      }).format(num);
-    }
-
-    function resolveApiUrl(path) {
-      const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-      const baseOrigin = isLocalHost && window.location.port !== '8000'
-        ? 'http://127.0.0.1:8000'
-        : window.location.origin;
-      return new URL(path, baseOrigin).toString();
-    }
-
-    async function fetchJson(url) {
-      const response = await fetch(resolveApiUrl(url));
-      if (!response.ok) {
-        throw new Error(`${url} ${response.status}`);
-      }
-      return response.json();
-    }
-
     let directReadRuntimePromise;
 
     function getDirectReadRuntime() {
@@ -839,16 +799,6 @@
       }
     }
 
-    async function performSearch(query) {
-      const input = document.getElementById('stock-search-input');
-      if (input) {
-        input.value = query;
-      }
-      const runtime = await getDirectReadRuntime();
-      const controller = runtime.createSearchController({ onToast: showToast });
-      await controller.searchNow();
-    }
-
     async function bindSearch() {
       const input = document.getElementById('stock-search-input');
       const button = document.getElementById('stock-search-button');
@@ -871,21 +821,31 @@
       controller.bind();
     }
 
-    document.querySelectorAll('.mood-card').forEach((card) => {
-      card.addEventListener('click', () => {
-        document.querySelectorAll('.mood-card').forEach((item) => {
-          item.classList.remove('selected');
-          const label = item.querySelector('span');
-          label.classList.remove('text-[#2F1C12]');
-          label.classList.add('text-[#6E4C39]');
-        });
+    function syncMoodSelection(selectedCard) {
+      document.querySelectorAll('.mood-card').forEach((item) => {
+        item.classList.remove('selected');
+        const label = item.querySelector('span');
+        label.classList.remove('text-[#2F1C12]');
+        label.classList.add('text-[#6E4C39]');
+      });
 
-        card.classList.add('selected');
-        const label = card.querySelector('span');
-        label.classList.remove('text-[#6E4C39]');
-        label.classList.add('text-[#2F1C12]');
+      if (!selectedCard) {
+        return;
+      }
+
+      selectedCard.classList.add('selected');
+      const label = selectedCard.querySelector('span');
+      label.classList.remove('text-[#6E4C39]');
+      label.classList.add('text-[#2F1C12]');
+    }
+
+    document.querySelectorAll('.mood-card-input').forEach((input) => {
+      input.addEventListener('change', () => {
+        syncMoodSelection(input.closest('.mood-card'));
       });
     });
+
+    syncMoodSelection(document.querySelector('.mood-card-input:checked')?.closest('.mood-card'));
 
     refreshMarketSummary();
     refreshStockCard('AAPL', 1);

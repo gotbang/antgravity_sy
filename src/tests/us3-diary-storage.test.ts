@@ -8,12 +8,15 @@ describe("US3 diary storage", () => {
     document.body.innerHTML = `
       <div>
         <label class="mood-card selected" data-emoji="🍯" data-label="달달해">
+          <input class="mood-card-input" type="radio" name="diary-mood" value="달달해" checked />
           <span>달달해</span>
         </label>
         <label class="mood-card" data-emoji="💧" data-label="물방울">
+          <input class="mood-card-input" type="radio" name="diary-mood" value="물방울" />
           <span>물방울</span>
         </label>
       </div>
+      <label for="diary-entry-input">생존 일기 내용</label>
       <textarea id="diary-entry-input"></textarea>
       <button id="diary-save-button" type="button">저장하기</button>
       <p id="diary-history-empty" class="hidden">비어 있음</p>
@@ -62,5 +65,26 @@ describe("US3 diary storage", () => {
     expect(localStorage.getItem("antgravity-diary-entries")).toBe("[]");
     expect(document.getElementById("diary-history-empty")?.classList.contains("hidden")).toBe(false);
     expect(onToast).toHaveBeenCalledWith("기록을 삭제했어.");
+  });
+
+  it("renders diary content safely without injecting HTML from storage", () => {
+    localStorage.setItem("antgravity-diary-entries", JSON.stringify([
+      {
+        id: "1",
+        createdAt: "2026.03.22",
+        moodEmoji: "💧",
+        moodLabel: "<script>alert(1)</script>",
+        content: "<img src=x onerror=alert(1)>",
+      },
+    ]));
+    const controller = createDiaryController({ onToast: vi.fn() });
+
+    controller.bind();
+
+    expect(document.querySelector("#diary-history-list img")).toBeNull();
+    expect(document.querySelector("#diary-history-list script")).toBeNull();
+    expect(document.getElementById("diary-history-list")?.textContent).toContain("<img src=x onerror=alert(1)>");
+    expect(document.getElementById("diary-history-list")?.textContent).toContain("<script>alert(1)</script>");
+    expect(controller.getEntries()).toHaveLength(1);
   });
 });
