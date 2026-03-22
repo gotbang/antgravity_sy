@@ -4,6 +4,19 @@ import {
   searchStocksDirect
 } from "./supabase-queries.js";
 
+const priceFormatters = {
+  KR: new Intl.NumberFormat("ko-KR", {
+    style: "currency",
+    currency: "KRW",
+    maximumFractionDigits: 2
+  }),
+  US: new Intl.NumberFormat("ko-KR", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2
+  })
+};
+
 function applyText(element, value) {
   if (element && value !== undefined && value !== null) {
     element.textContent = String(value);
@@ -31,12 +44,8 @@ export function formatDirectPrice(value, market) {
     return "-";
   }
 
-  const currency = market === "KR" ? "KRW" : "USD";
-  return new Intl.NumberFormat("ko-KR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2
-  }).format(numberValue);
+  const formatter = market === "KR" ? priceFormatters.KR : priceFormatters.US;
+  return formatter.format(numberValue);
 }
 
 function resolvePriceStatusText(detail) {
@@ -295,27 +304,54 @@ function renderSearchResults({
       "px-3",
       "py-3",
       "text-left",
-      "transition",
-      index === activeIndex
-        ? "border-[#5E3A23] bg-[#FFF4D8]"
-        : "border-[#D7C1A6] bg-[#FFF9F1]"
+      "transition"
     ].join(" ");
-    button.innerHTML = `
-      <div class="flex items-center justify-between gap-3">
-        <div>
-          <p class="text-sm font-extrabold text-[#2F1C12]">${item.name ?? item.symbol}</p>
-          <p class="text-[11px] font-semibold text-[#8E715C]">${item.symbol}</p>
-        </div>
-        <div class="flex flex-col items-end gap-1">
-          <span class="status-shell px-2 py-1 text-[10px] font-extrabold">${item.market ?? "-"}</span>
-          <span class="text-[10px] font-bold text-[#8E715C]">${resolveSearchBadgeText(item)}</span>
-        </div>
-      </div>
-    `;
+    button.dataset.index = String(index);
+    const row = document.createElement("div");
+    row.className = "flex items-center justify-between gap-3";
+
+    const left = document.createElement("div");
+    const name = document.createElement("p");
+    name.className = "text-sm font-extrabold text-[#2F1C12]";
+    name.textContent = item.name ?? item.symbol;
+    const symbol = document.createElement("p");
+    symbol.className = "text-[11px] font-semibold text-[#8E715C]";
+    symbol.textContent = item.symbol;
+    left.append(name, symbol);
+
+    const right = document.createElement("div");
+    right.className = "flex flex-col items-end gap-1";
+    const market = document.createElement("span");
+    market.className = "status-shell px-2 py-1 text-[10px] font-extrabold";
+    market.textContent = item.market ?? "-";
+    const badge = document.createElement("span");
+    badge.className = "text-[10px] font-bold text-[#8E715C]";
+    badge.textContent = resolveSearchBadgeText(item);
+    right.append(market, badge);
+
+    row.append(left, right);
+    button.appendChild(row);
     button.addEventListener("click", async () => {
       await onSelect(item);
     });
     list.appendChild(button);
+  });
+
+  updateSearchActiveState(list, activeIndex);
+}
+
+function updateSearchActiveState(list, activeIndex) {
+  if (!list) {
+    return;
+  }
+
+  Array.from(list.querySelectorAll("button")).forEach((button, index) => {
+    button.classList.remove("border-[#5E3A23]", "bg-[#FFF4D8]", "border-[#D7C1A6]", "bg-[#FFF9F1]");
+    if (index === activeIndex) {
+      button.classList.add("border-[#5E3A23]", "bg-[#FFF4D8]");
+      return;
+    }
+    button.classList.add("border-[#D7C1A6]", "bg-[#FFF9F1]");
   });
 }
 
@@ -382,7 +418,7 @@ export function createSearchController({
   }
 
   function rerender() {
-    renderSearchResults({ items, activeIndex, list, status, onSelect: selectItem });
+    updateSearchActiveState(list, activeIndex);
   }
 
   async function handleKeydown(event) {
@@ -439,5 +475,171 @@ export function createSearchController({
         void handleKeydown(event);
       });
     }
+  };
+}
+
+const diaryStorageKey = "antgravity-diary-entries";
+
+function formatDiaryDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}.${month}.${day}`;
+}
+
+function readDiaryEntries(storage) {
+  const raw = storage?.getItem(diaryStorageKey);
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDiaryEntries(storage, entries) {
+  storage?.setItem(diaryStorageKey, JSON.stringify(entries));
+}
+
+function getDiaryElements(documentRef) {
+  return {
+    textarea: documentRef.getElementById("diary-entry-input"),
+    saveButton: documentRef.getElementById("diary-save-button"),
+    list: documentRef.getElementById("diary-history-list"),
+    empty: documentRef.getElementById("diary-history-empty"),
+  };
+}
+
+function getSelectedMood(documentRef) {
+  const selectedInput = documentRef.querySelector(".mood-card-input:checked");
+  const selected = selectedInput?.closest(".mood-card") ?? documentRef.querySelector(".mood-card.selected");
+  return {
+    emoji: selected?.dataset.emoji ?? "🍯",
+    label: selected?.dataset.label ?? "달달해",
+  };
+}
+
+function renderDiaryEntries(entries, { list, empty, onDelete }) {
+  if (!list) {
+    return;
+  }
+
+  list.innerHTML = "";
+
+  if (!entries.length) {
+    empty?.classList.remove("hidden");
+    return;
+  }
+
+  empty?.classList.add("hidden");
+
+  entries.forEach((entry) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "market-badge p-3";
+    const header = document.createElement("div");
+    header.className = "flex items-start justify-between gap-3 mb-1";
+
+    const meta = document.createElement("div");
+    meta.className = "flex items-center gap-2";
+    const emoji = document.createElement("span");
+    emoji.className = "text-lg";
+    emoji.textContent = entry.moodEmoji;
+    const metaText = document.createElement("div");
+    metaText.className = "flex flex-col";
+    const createdAt = document.createElement("span");
+    createdAt.className = "text-xs text-[#8E715C] font-bold";
+    createdAt.textContent = entry.createdAt;
+    const moodLabel = document.createElement("span");
+    moodLabel.className = "text-[11px] text-[#8E715C] font-extrabold";
+    moodLabel.textContent = entry.moodLabel;
+    metaText.append(createdAt, moodLabel);
+    meta.append(emoji, metaText);
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.dataset.diaryDeleteId = entry.id;
+    deleteButton.className = "rounded-full border border-[#D7C1A6] bg-[#FFF8EF] px-3 py-1 text-[11px] font-extrabold text-[#8E715C]";
+    deleteButton.textContent = "삭제";
+    deleteButton.addEventListener("click", () => {
+      onDelete(entry.id);
+    });
+
+    header.append(meta, deleteButton);
+
+    const content = document.createElement("p");
+    content.className = "text-sm text-[#6E4C39] font-diary whitespace-pre-wrap";
+    content.textContent = entry.content;
+
+    wrapper.append(header, content);
+    list.appendChild(wrapper);
+  });
+}
+
+export function createDiaryController({
+  documentRef = document,
+  storage = globalThis.localStorage,
+  onToast = () => {},
+  now = () => new Date(),
+} = {}) {
+  const elements = getDiaryElements(documentRef);
+  let entries = readDiaryEntries(storage);
+
+  const rerender = () => {
+    renderDiaryEntries(entries, {
+      list: elements.list,
+      empty: elements.empty,
+      onDelete: deleteEntry,
+    });
+  };
+
+  function saveEntry() {
+    const content = elements.textarea?.value?.trim() ?? "";
+    if (!content) {
+      onToast("일지를 먼저 적어줘.");
+      elements.textarea?.focus();
+      return;
+    }
+
+    const mood = getSelectedMood(documentRef);
+    const entry = {
+      id: `${now().getTime()}`,
+      createdAt: formatDiaryDate(now()),
+      moodEmoji: mood.emoji,
+      moodLabel: mood.label,
+      content,
+    };
+
+    entries = [entry, ...entries];
+    writeDiaryEntries(storage, entries);
+    rerender();
+
+    if (elements.textarea) {
+      elements.textarea.value = "";
+    }
+    onToast("생존 일지를 저장했어.");
+  }
+
+  function deleteEntry(id) {
+    entries = entries.filter((entry) => entry.id !== id);
+    writeDiaryEntries(storage, entries);
+    rerender();
+    onToast("기록을 삭제했어.");
+  }
+
+  return {
+    bind() {
+      rerender();
+      elements.saveButton?.addEventListener("click", saveEntry);
+    },
+    saveNow() {
+      saveEntry();
+    },
+    getEntries() {
+      return [...entries];
+    },
   };
 }

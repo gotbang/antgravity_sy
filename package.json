@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "sync:public-env": "node scripts/sync-public-env.mjs",
+    "build": "node scripts/sync-public-env.mjs --strict",
     "dev": "pnpm run sync:public-env && python -m http.server 8080",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

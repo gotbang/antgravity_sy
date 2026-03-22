@@ -21,4 +21,4 @@ app.include_router(stocks_router, prefix='/api')
 
 @app.get('/api/health')
 def health() -> dict:
-    return {'status': 'ok', 'env': settings.APP_ENV}
+    return {'status': 'ok'}
